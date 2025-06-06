@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast - My Podcasts</title>
+    <link rel="stylesheet" href="static/styles.css">
+    <script src="static/lang/i18n.js"></script>
+</head>
+<body>
+    <div class="header">
+        <button onclick="window.location.href = ingressBase + '/'" data-i18n="header.home">Home</button>
+        <h1 id="podcastTitle">Podcast</h1>
+    </div>
+
+    <div class="content">
+        <div class="podcast-info">
+            <img id="podcastImage" src="" alt="Slika podcasta">
+            <div>
+                <h2 id="podcastTitleInfo" data-i18n="podcast.loading_title">Loading title...</h2>
+                <div id="podcastDescription" class="podcast-description">
+                    <div class="description-preview" data-i18n="podcast.loading_description">Loading description...</div>
+                    <div class="description-full" style="display:none;" data-i18n="podcast.loading_description">Loading description...</div>
+                    <span class="show-more" onclick="toggleDescription(this)" style="display:none;" data-i18n="podcast.more">More...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="visibility-toggle">
+            <strong data-i18n="podcast.public_podcast">Public podcast</strong>
+            <select id="visibilitySelect" onchange="updatePodcastVisibility()">
+                <option value="1" data-i18n="podcast.visibility_yes">Yes</option>
+                <option value="0" data-i18n="podcast.visibility_no">No</option>
+            </select>
+        </div>
+
+        
+    <!-- Funkcionalnosti za nalaganje XML datoteke -->
+    <h2 data-i18n="podcast.manual_rss_upload">Manual RSS Upload</h2>
+    <input type="file" id="rssXmlInput" accept=".xml" data-i18n-placeholder="podcast.select_xml_file" placeholder="Select XML file with RSS data">
+    <button id="addMissingBtn" onclick="addMissingEpisodes()" data-i18n="podcast.add_missing_episodes">Add missing episodes from RSS XML</button>
+    
+    <h2 data-i18n="podcast.latest_episodes_title">Latest Episodes</h2>
+    <div id="episodes" data-i18n="states.loading_episodes">Loading episodes...</div>
+
+    <audio id="audioPlayer" controls>
+        Your browser does not support the audio player.
+    </audio>
+
+    <div class="pagination">
+        <button id="firstPage" onclick="goToFirstPage()" disabled data-i18n="pagination.first_page">First Page</button>
+        <button id="prevPage" onclick="changePage(-1)" disabled data-i18n="pagination.previous_page">Previous Page</button>
+        <div class="page-input-container">
+            <input type="number" id="pageInput" min="1" data-i18n-placeholder="forms.page_placeholder" placeholder="Page...">
+            <button onclick="goToPage()" data-i18n="forms.go_to_page">Go to</button>
+        </div>
+        <span id="pageInfo"></span>
+        <button id="nextPage" onclick="changePage(1)" data-i18n="pagination.next_page">Next Page</button>
+        <button id="lastPage" onclick="goToLastPage()" data-i18n="pagination.last_page">Last Page</button>
+    </div>
+
+    
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const podcastId = params.get('id');
+        const targetEpisodeId = params.get('episode');
+        const ingressBase = window.location.pathname.split('/').slice(0, -1).join('/');
+        let currentPage = 1;
+        const pageSize = 5;
+        let totalEpisodes = 0;
+
+        // Globalne spremenljivke za sledenje predvajanju
+        let currentPlayingEpisodeId = null;
+        let positionUpdateInterval = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+        loadPodcastInfo();
+        loadEpisodes();
+        loadMediaPlayers();
+        testLoadEpisodes();
+
+        
+    });
+
+        // Dodamo novo funkcijo za vrnitev na seznam izbranega uporabnika
+        function backToUserView() {
+            const params = new URLSearchParams(window.location.search);
+            const userId = params.get('as_user');
+            if (userId) {
+                window.location.href = `${ingressBase}/tablet.html?as_user=${userId}`;
+            }
+        }
+
+        // Funkcija za pridobitev skrajšanega besedila
+        function getPreviewText(text) {
+            if (!text) return '';
+            const maxLength = 50; // Spremenjeno na 50 znakov
+             if (text.length <= maxLength) return text;
+    
+             // Poskusi najti konec besede blizu maxLength
+            const endOfWord = text.lastIndexOf(' ', maxLength);
+            if (endOfWord > 0) {
+                 return text.substring(0, endOfWord) + '...';
+            }
+    
+            // Če ni presledka, vrni prvih maxLength znakov
+            return text.substring(0, maxLength) + '...';
+    }
+    
+        // Funkcija za preklapljanje med skrajšanim in celotnim opisom
+        function toggleDescription(element) {
+            const descriptionDiv = element.parentElement;
+            const preview = descriptionDiv.querySelector('.description-preview');
+            const full = descriptionDiv.querySelector('.description-full');
+            
+            if (preview.style.display !== 'none') {
+                preview.style.display = 'none';
+                full.style.display = 'block';
+                element.textContent = window.i18n.t('podcast.less');
+            } else {
+                preview.style.display = 'block';
+                full.style.display = 'none';
+                element.textContent = window.i18n.t('podcast.more');
+            }
+        }
+    
+        // Update the addMissingEpisodes function in podcast.html
+        async function addMissingEpisodes() {
+            const fileInput = document.getElementById('rssXmlInput');
+            const file = fileInput.files[0];
+    
+            if (!file) {
+                alert(window.i18n.t('messages.select_xml_file_alert'));
+                return;
+            }
+    
+            if (!file.name.toLowerCase().endsWith('.xml')) {
+                alert(window.i18n.t('messages.invalid_xml_file'));
+                return;
+            }
+    
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const xmlData = event.target.result;
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlData, 'application/xml');
+    
+                    // Check for parsing errors
+                    const parserError = xmlDoc.querySelector('parsererror');
+                    if (parserError) {
+                        throw new Error('Invalid XML file');
+                    }
+    
+                    // Try different RSS formats
+                    const items = xmlDoc.getElementsByTagName('item') || 
+                                 xmlDoc.getElementsByTagName('entry') ||
+                                 [];
+    
+                    if (items.length === 0) {
+                        throw new Error('No episodes found in the XML file');
+                    }
+    
+                    const episodes = [];
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        
+                        // Try different tag combinations for title
+                        const title = getElementContent(item, ['title']);
+                        
+                        // Try different tag combinations for URL
+                        const url = getElementEnclosure(item) || 
+                                   getElementContent(item, ['link', 'guid']);
+                        
+                        // Try different tag combinations for date
+                        const pubDate = getElementContent(item, ['pubDate', 'published', 'date']);
+    
+                        if (title && url) {
+                            episodes.push({
+                                naslov: title.trim(),
+                                url: url.trim(),
+                                datum_izdaje: pubDate ? pubDate.trim() : new Date().toISOString(),
+                            });
+                        }
+                    }
+    
+                    if (episodes.length === 0) {
+                        throw new Error('No valid episodes found in the XML file');
+                    }
+    
+                    console.log('Parsed episodes:', episodes);
+    
+                    // Send to backend
+                    const response = await fetch(`${ingressBase}/api/podcasts/${podcastId}/add_missing_episodes`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ episodes })
+                    });
+    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('Server error:', errorData);
+                        throw new Error(errorData.error || 'Error adding episodes');
+                    }
+    
+                    const result = await response.json();
+                    console.log('Server response:', result);
+                    const message = `
+                        Upload complete:
+                        - ${result.added_count} new episodes added
+                        - ${result.skipped_count} duplicate episodes skipped
+                        - ${result.total_processed} total episodes processed
+                    `;
+                    alert(message);
+                    await loadEpisodes(); // Reload episode list
+    
+                } catch (error) {
+                    console.error('Error processing XML:', error);
+                    alert('Error processing XML file: ' + error.message);
+                }
+            };
+    
+            reader.onerror = function() {
+                alert('Error reading file');
+            };
+    
+            reader.readAsText(file);
+        }
+    
+        // Helper function to get content from multiple possible element names
+        function getElementContent(item, possibleNames) {
+            for (const name of possibleNames) {
+                const element = item.getElementsByTagName(name)[0];
+                if (element && element.textContent) {
+                    return element.textContent;
+                }
+            }
+            return null;
+        }
+    
+        // Helper function to get enclosure URL (common in podcast RSS feeds)
+        function getElementEnclosure(item) {
+            const enclosure = item.getElementsByTagName('enclosure')[0];
+            if (enclosure && enclosure.getAttribute('url')) {
+                return enclosure.getAttribute('url');
+            }
+            return null;
+        }
+    
+        // Ostale funkcije kot prej
+        async function loadPodcastInfo() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const asUserId = urlParams.get('as_user');
+                const source = urlParams.get('source');
+        
+                let apiUrl;
+                let podcast;
+        
+                if (source === 'tablet' && asUserId) {
+                    apiUrl = `${ingressBase}/api/users/${asUserId}/podcasts`;
+                    const response = await fetch(apiUrl);
+                    const data = await response.json();
+                    podcast = data.podcasts.find(p => p.id == podcastId);
+                } else {
+                    apiUrl = `${ingressBase}/api/podcasts`;
+                    const response = await fetch(apiUrl);
+                    const podcasts = await response.json();
+                    podcast = podcasts.find(p => p.id == podcastId);
+                }
+    
+                if (podcast) {
+                    document.getElementById('podcastTitle').textContent = podcast.naslov;
+                    document.getElementById('podcastTitleInfo').textContent = podcast.naslov;
+                    document.getElementById('podcastImage').src = podcast.image_url || 'https://via.placeholder.com/150';
+                    
+                    // Nastavi vidnost v dropdown meniju
+                    const visibilitySelect = document.getElementById('visibilitySelect');
+                    visibilitySelect.value = podcast.is_public ? '1' : '0';
+
+                    // Dodaj opis podcasta
+const descriptionElement = document.getElementById('podcastDescription');
+if (descriptionElement) {
+    const previewEl = descriptionElement.querySelector('.description-preview');
+    const fullEl = descriptionElement.querySelector('.description-full');
+    const showMoreBtn = descriptionElement.querySelector('.show-more');
+    
+    if (podcast.description) {
+        // Nastavi celoten opis
+        fullEl.textContent = podcast.description;
+        
+        // Nastavi skrajšan opis za mobilne naprave
+        previewEl.textContent = getPreviewText(podcast.description);
+        
+        // Prikaži "Več..." gumb samo če je opis daljši od maxLength
+        if (podcast.description.length > 50) {
+            showMoreBtn.style.display = 'inline';
+        } else {
+            showMoreBtn.style.display = 'none';
+        }
+    } else {
+        previewEl.textContent = window.i18n.t('podcast.description_not_available');
+        fullEl.textContent = window.i18n.t('podcast.description_not_available');
+        showMoreBtn.style.display = 'none';
+        descriptionElement.classList.add('no-description');
+    }
+}
+                }
+            } catch (error) {
+                console.error('Error loading podcast:', error);
+            }
+        }
+    
+        async function loadEpisodes(podcastId, asUserId) {
+            const episodesDiv = document.getElementById('episodes');
+            try {
+                // Če podcastId ni podan, poskusi ga dobiti iz URL
+                if (!podcastId) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    podcastId = urlParams.get('id');
+                }
+
+                // Če asUserId ni podan, poskusi ga dobiti iz URL
+                if (!asUserId) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    asUserId = urlParams.get('as_user');
+                }
+
+                // Sestavi URL za API klic z upoštevanjem as_user parametra
+                let apiUrl = `${ingressBase}/api/episodes/${podcastId}`;
+                if (asUserId) {
+                    apiUrl += `?as_user=${asUserId}`;
+                }
+
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('Error loading episodes.');
+
+                const episodes = await response.json();
+                totalEpisodes = episodes.length;
+
+                // Če imamo target epizodo, poiščimo na kateri strani se nahaja
+                if (targetEpisodeId) {
+                    const targetIndex = episodes.findIndex(ep => ep.id == targetEpisodeId);
+                    if (targetIndex !== -1) {
+                        // Izračunaj na kateri strani se nahaja epizoda
+                        const targetPage = Math.floor(targetIndex / pageSize) + 1;
+                        if (targetPage !== currentPage) {
+                            currentPage = targetPage;
+                            // Ponovno naloži s pravo stranjo (rekurzivni klic)
+                            await loadEpisodes(podcastId, asUserId);
+                            return;
+                        }
+                    }
+                }
+
+                const start = (currentPage - 1) * pageSize;
+                const end = start + pageSize;
+                const pageEpisodes = episodes.slice(start, end);
+
+                episodesDiv.innerHTML = pageEpisodes.map(episode => {
+                     // Escape special characters in title
+                    const safeTitle = episode.naslov.replace(/['"\\]/g, char => '\\' + char);
+            
+                    // Določi stanje poslušanosti za prikaz ikone in besedila
+                    const isListened = episode.poslušano === 1;
+                    const hasPlaybackPosition = episode.playback_position > 0;
+    
+                    // Določi besedilo gumba glede na stanje predvajanja
+                    let playButtonText = '▶️ ' + window.i18n.t('episodes.play_browser');
+                    if (isListened) {
+                        playButtonText = '🔄 ' + window.i18n.t('episodes.play_again');
+                    } else if (hasPlaybackPosition) {
+                        playButtonText = `▶️ ${window.i18n.t('episodes.continue_from')} (${episode.playback_time_formatted})`;
+                    }
+    
+                    // Ikone za status
+                    const statusIcons = [];
+                    if (isListened) statusIcons.push('✅');
+                    if (hasPlaybackPosition) statusIcons.push('⏸️');
+                    const statusDisplay = statusIcons.length > 0 ? statusIcons.join(' ') : '';
+            
+                    return `
+                        <div class="episode">
+                            <div class="episode-header">
+                                <strong>${episode.naslov} ${statusDisplay}</strong>
+                                ${hasPlaybackPosition ? 
+                                    `<span class="playback-position">${window.i18n.t('episodes.position')} ${episode.playback_time_formatted}</span>` 
+                                    : ''}
+                            </div>
+                            <p>${window.i18n.t('episodes.publication_date')} ${episode.datum_izdaje}</p>
+                            ${episode.opis ? `
+                            <div class="episode-description">
+                                <div class="description-preview">${getPreviewText(episode.opis)}</div>
+                                <div class="description-full" style="display:none;">${episode.opis}</div>
+                                <span class="show-more" onclick="toggleDescription(this)">${window.i18n.t('podcast.more')}</span>
+                            </div>
+                            ` : ''}
+                            <div class="episode-controls">
+                                <button onclick="playEpisode('${episode.url}', ${episode.id}, ${episode.playback_position})" 
+                                    class="play-button" 
+                                    data-position="${episode.playback_position}">
+                                ${playButtonText}
+                            </button>
+                            <div class="player-select-container">
+                                <select 
+                                    class="player-select" 
+                                    onchange="playOnDeviceWithPosition('${episode.url}', '${safeTitle}', this.value, ${episode.id})"
+                                    aria-label="${window.i18n.t('forms.select_player')} ${safeTitle}"
+                                >
+                                    <option value=""> 🔊 ${window.i18n.t('forms.select_player')}</option>
+                                </select>
+                            </div>
+                            <button onclick="deleteEpisode(${episode.id})" class="delete-button" style="background-color: #dc3545;">
+                                ${window.i18n.t('episodes.delete_episode')}
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+
+                updatePagination();
+                // Load media players after episodes are rendered
+                await loadMediaPlayers();
+
+                // Če imamo target epizodo, poiščimo jo in scroll-aj nanjo
+                if (targetEpisodeId) {
+                    scrollToTargetEpisode(parseInt(targetEpisodeId));
+                }
+            } catch (error) {
+                console.error('Error loading episodes:', error);
+                episodesDiv.innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        }
+    
+        async function loadMediaPlayers() {
+    try {
+        console.log('Fetching media players...');
+        const response = await fetch(`${ingressBase}/api/media_players`);
+        const data = await response.json();
+        
+        console.log('Media players response:', data);
+        
+        if (!response.ok || !data.players) {
+            throw new Error(data.error || 'Failed to fetch media players');
+        }
+        
+        const players = data.players;
+        if (!Array.isArray(players)) {
+            console.error('Invalid players data:', players);
+            throw new Error('Invalid media players data received');
+        }
+        
+        // Update all player select dropdowns
+        const selects = document.querySelectorAll('.player-select');
+        selects.forEach(select => {
+            // Disable select while updating
+            select.disabled = true;
+            
+            if (players.length === 0) {
+                // Če ni izbranih predvajalnikov
+                select.innerHTML = `
+                    <option value=""> 🔊 ${window.i18n.t('forms.no_players')}</option>
+                `;
+            } else {
+                // Create options
+                const options = players.map(player => {
+                    const name = player.name || player.entity_id.replace('media_player.', '');
+                    return `<option value="${player.entity_id}">${name}</option>`;
+                });
+                
+                // Update select content
+                select.innerHTML = `
+                    <option value=""> 🔊 ${window.i18n.t('forms.select_player')}</option>
+                    ${options.join('')}
+                `;
+            }
+            
+            // Re-enable select
+            select.disabled = false;
+        });
+        
+        console.log('Media players loaded successfully');
+    } catch (error) {
+        console.error('Error loading media players:', error);
+        const selects = document.querySelectorAll('.player-select');
+        selects.forEach(select => {
+            select.innerHTML = `<option value="">${window.i18n.t('forms.player_error')}</option>`;
+            select.disabled = true;
+        });
+    }
+}
+
+        // Funkcija za iskanje in scroll na ciljno epizodo
+        function scrollToTargetEpisode(episodeId) {
+            // Poiščimo epizodo v trenutno naloženih epizodah
+            const episodeElements = document.querySelectorAll('.episode');
+            episodeElements.forEach(element => {
+                // Poiščimo gumb za predvajanje, ki vsebuje točno ta episode ID
+                const playButton = element.querySelector(`[onclick*="playEpisode"][onclick*="${episodeId}"]`);
+                if (playButton) {
+                    // Preverimo, ali se ID točno ujema (ne samo delno)
+                    const onclickAttr = playButton.getAttribute('onclick');
+                    // Regex za preverjanje, ali je ID obkrožen z vejicami ali oklepaji
+                    const regex = new RegExp(`[,\\(]\\s*${episodeId}\\s*[,\\)]`);
+                    if (regex.test(onclickAttr)) {
+                        // Označimo epizodo
+                        element.style.backgroundColor = '#fff3cd';
+                        element.style.border = '2px solid #ffc107';
+                        // Scroll na epizodo
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return;
+                    }
+                }
+            });
+        }
+
+        // Funkcija za shranjevanje pozicije
+async function savePlaybackPosition(episodeId, position) {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const asUserId = urlParams.get('as_user');
+        
+        const requestData = {
+            position: Math.floor(position),
+        };
+        
+        if (asUserId) {
+            requestData.as_user_id = parseInt(asUserId);
+        }
+
+        const response = await fetch(`${ingressBase}/api/episodes/${episodeId}/position`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            console.error('Failed to save playback position:', await response.text());
+        }
+    } catch (error) {
+        console.error('Error saving playback position:', error);
+    }
+}
+
+// Posodobljena funkcija za predvajanje
+async function playEpisode(url, episodeId, startPosition = 0) {
+    const audioPlayer = document.getElementById('audioPlayer');
+    
+    // Če je isto kot trenutno predvajamo, samo preklopimo play/pause
+    if (currentPlayingEpisodeId === episodeId && audioPlayer.src === url) {
+        if (audioPlayer.paused) {
+            audioPlayer.play();
+        } else {
+            audioPlayer.pause();
+        }
+        return;
+    }
+
+    // Počistimo interval za prejšnjo epizodo
+    if (positionUpdateInterval) {
+        clearInterval(positionUpdateInterval);
+    }
+
+    try {
+        // Nastavimo novo epizodo
+        currentPlayingEpisodeId = episodeId;
+        audioPlayer.src = url;
+
+        // Čakamo, da se metadata naloži
+        await new Promise((resolve) => {
+            audioPlayer.onloadedmetadata = () => {
+                // Nastavimo začetno pozicijo po tem, ko se audio naloži
+                if (startPosition > 0) {
+                    audioPlayer.currentTime = startPosition;
+                }
+                resolve();
+            };
+        });
+
+        // Začnemo s predvajanjem
+        await audioPlayer.play();
+        
+        // Nastavimo interval za shranjevanje pozicije
+        positionUpdateInterval = setInterval(() => {
+            if (!audioPlayer.paused) {
+                savePlaybackPosition(episodeId, audioPlayer.currentTime);
+            }
+        }, 10000); // Shranimo vsakih 10 sekund
+        
+        // Event listener za pavzo/stop
+        audioPlayer.onpause = () => {
+            if (currentPlayingEpisodeId === episodeId) {
+                savePlaybackPosition(episodeId, audioPlayer.currentTime);
+            }
+        };
+        
+        // Event listener za konec predvajanja
+        audioPlayer.onended = async () => {
+            if (currentPlayingEpisodeId === episodeId) {
+                clearInterval(positionUpdateInterval);
+                currentPlayingEpisodeId = null;
+                // Označimo kot poslušano
+                await markEpisodeAsListened(episodeId);
+                // Ponastavimo pozicijo na 0
+                await savePlaybackPosition(episodeId, 0);
+                await loadEpisodes();
+            }
+        };
+
+        // Označimo kot poslušano
+        await markEpisodeAsListened(episodeId);
+        
+    } catch (error) {
+        console.error('Error playing episode:', error);
+    }
+}
+
+// Funkcija za označevanje epizode kot poslušane (izločena iz playEpisode)
+async function markEpisodeAsListened(episodeId) {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const asUserId = urlParams.get('as_user');
+        
+        const requestData = {};
+        if (asUserId) {
+            requestData.as_user_id = parseInt(asUserId);
+        }
+        
+        const response = await fetch(`${ingressBase}/api/episodes/mark_listened/${episodeId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (response.ok) {
+            await loadEpisodes();
+        } else {
+            console.error('Failed to mark episode as listened:', await response.text());
+        }
+    } catch (error) {
+        console.error('Error marking episode as listened:', error);
+    }
+}
+
+// Nova funkcija za predvajanje na napravi z upoštevanjem shranjene pozicije
+async function playOnDeviceWithPosition(episodeUrl, episodeTitle, playerEntityId, episodeId) {
+    if (!playerEntityId) return;
+
+    try {
+        // Najprej pridobimo shranjeno pozicijo predvajanja
+        const urlParams = new URLSearchParams(window.location.search);
+        const asUserId = urlParams.get('as_user');
+        
+        let positionApiUrl = `${ingressBase}/api/episodes/${episodeId}/position`;
+        if (asUserId) {
+            positionApiUrl += `?as_user=${asUserId}`;
+        }
+        
+        const positionResponse = await fetch(positionApiUrl);
+        let startPosition = 0;
+        
+        if (positionResponse.ok) {
+            const positionData = await positionResponse.json();
+            startPosition = positionData.position || 0;
+        }
+
+        // Predvajaj na napravi z začetno pozicijo
+        const response = await fetch(`${ingressBase}/api/play_episode`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                player_entity_id: playerEntityId,
+                episode_url: episodeUrl,
+                episode_title: episodeTitle,
+                start_position: startPosition
+            })
+        });
+
+        if (!response.ok) throw new Error('Error playing episode');
+
+        // Označimo kot poslušano
+        await markEpisodeAsListened(episodeId);
+        
+        // Ponastavimo pozicijo na 0 (predpostavimo dokončano poslušanje)
+        await savePlaybackPosition(episodeId, 0);
+        
+        const result = await response.json();
+        if (startPosition > 0) {
+            const minutes = Math.floor(startPosition / 60);
+            const seconds = startPosition % 60;
+            alert(window.i18n.t('messages.playing_from_position', {time: `${minutes}:${seconds.toString().padStart(2, '0')}`}));
+        } else {
+            alert(result.message);
+        }
+        } catch (error) {
+            alert(window.i18n.t('messages.device_playback_error', {error: error.message}));
+        }
+        }   
+
+// Funkcija za predvajanje na napravi
+async function playOnDevice(episodeUrl, episodeTitle, playerEntityId, episodeId, startPosition = 0) {
+    if (!playerEntityId) return;
+
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const asUserId = urlParams.get('as_user');
+
+        const response = await fetch(`${ingressBase}/api/play_episode`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                player_entity_id: playerEntityId,
+                episode_url: episodeUrl,
+                episode_title: episodeTitle,
+                start_position: startPosition // Dodamo začetno pozicijo
+            })
+        });
+
+        if (!response.ok) throw new Error('Error playing episode');
+
+        // Označimo kot poslušano in začnemo slediti poziciji
+        await markEpisodeAsListened(episodeId);
+        
+        const result = await response.json();
+        alert(result.message);
+    } catch (error) {
+        alert(window.i18n.t('messages.device_playback_error', {error: error.message}));
+    }
+}
+
+// Cleanup funkcija ob zapiranju strani
+window.addEventListener('beforeunload', () => {
+    if (currentPlayingEpisodeId && !audioPlayer.paused) {
+        savePlaybackPosition(currentPlayingEpisodeId, audioPlayer.currentTime);
+    }
+    if (positionUpdateInterval) {
+        clearInterval(positionUpdateInterval);
+    }
+});
+
+    
+        function changePage(offset) {
+            currentPage += offset;
+            loadEpisodes();
+        }
+    
+        function goToFirstPage() {
+            currentPage = 1;
+            loadEpisodes();
+        }
+    
+        function goToLastPage() {
+            const totalPages = Math.ceil(totalEpisodes / pageSize);
+            currentPage = totalPages;
+            loadEpisodes();
+        }
+    
+        function goToPage() {
+            const pageInput = document.getElementById('pageInput');
+            const page = parseInt(pageInput.value);
+            if (page >= 1 && page <= Math.ceil(totalEpisodes / pageSize)) {
+                currentPage = page;
+                loadEpisodes();
+            } else {
+                alert(window.i18n.t('pagination.invalid_page'));
+            }
+        }
+    
+        function updatePagination() {
+            const totalPages = Math.ceil(totalEpisodes / pageSize);
+            document.getElementById('firstPage').disabled = currentPage === 1;
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages;
+            document.getElementById('lastPage').disabled = currentPage === totalPages;
+            document.getElementById('pageInfo').textContent = window.i18n.t('pagination.page_of', {current: currentPage, total: totalPages});
+        }
+    
+        async function playOnDevice(episodeUrl, episodeTitle, playerEntityId, episodeId) {
+            if (!playerEntityId) return;
+
+            try {
+                // Pridobimo URL parametre na začetku
+                const urlParams = new URLSearchParams(window.location.search);
+                const asUserId = urlParams.get('as_user');
+                const podcastId = urlParams.get('id');
+
+                // Predvajaj na napravi
+                const response = await fetch(`${ingressBase}/api/play_episode`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        player_entity_id: playerEntityId,
+                        episode_url: episodeUrl,
+                        episode_title: episodeTitle
+                    })
+                });
+
+                if (!response.ok) throw new Error('Error playing episode');
+
+                // Pripravimo podatke za označevanje poslušanosti
+                const requestData = {};
+                if (asUserId) {
+                    requestData.as_user_id = parseInt(asUserId);
+                }
+
+                // Označi kot poslušano
+                const listenResponse = await fetch(`${ingressBase}/api/episodes/mark_listened/${episodeId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!listenResponse.ok) {
+                    console.error('Failed to mark episode as listened:', await listenResponse.text());
+                } else {
+                    // Ponovno naloži epizode s pravilnim kontekstom uporabnika
+                    if (podcastId) {
+                        await loadEpisodes(podcastId, asUserId);
+                    }
+                }
+
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                alert(window.i18n.t('messages.device_playback_error', {error: error.message}));
+            }
+        }
+    
+        window.deleteEpisode = async function(episodeId) {
+            if (!confirm(window.i18n.t('messages.confirm_delete_episode'))) return;
+    
+            try {
+                const response = await fetch(`${ingressBase}/api/episodes/${episodeId}/delete`, {
+                    method: 'POST'
+                });
+        
+                if (!response.ok) throw new Error('Error deleting episode');
+        
+                const result = await response.json();
+                alert(result.message);
+                loadEpisodes();
+            } catch (error) {
+                alert(window.i18n.t('messages.episode_deleted') + ': ' + error.message);
+            }
+        };
+    
+        async function testLoadEpisodes() {
+            try {
+                await loadEpisodes();
+                const episodesDiv = document.getElementById('episodes');
+                if (episodesDiv.innerHTML.includes('Loading episodes...')) {
+                    console.error('Episodes did not load properly.');
+                } else {
+                    console.log('Episodes loaded properly.');
+                }
+            } catch (error) {
+                console.error('Error testing episode loading:', error);
+            }
+        }
+
+        async function updatePodcastVisibility() {
+            const visibilitySelect = document.getElementById('visibilitySelect');
+            const isPublic = parseInt(visibilitySelect.value);
+
+            try {
+                const response = await fetch(`${ingressBase}/api/podcasts/${podcastId}/visibility`, {
+                method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_public: isPublic })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error updating podcast visibility.');
+                }
+
+                const result = await response.json();
+                alert(window.i18n.t('messages.visibility_updated'));
+            } catch (error) {
+                console.error('Error updating podcast visibility:', error);
+                alert(window.i18n.t('messages.visibility_updated') + ': ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

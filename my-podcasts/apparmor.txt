@@ -1,0 +1,71 @@
+#include <tunables/global>
+
+profile my_podcasts flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities
+  capability,
+  file,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # S6-Overlay
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /package/** ix,
+  /command/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/tty rw,
+
+  # Bashio
+  /usr/lib/bashio/** ix,
+  /tmp/** rwk,
+
+  # Access to options.json and other files within your addon
+  /data/** rw,
+
+  # App files and Python execution
+  /app/** r,
+  /app/main.py ix,
+  /app/venv/** r,
+  /app/venv/bin/python3 ix,
+  /app/venv/bin/gunicorn ix,
+  /app/static/** r,
+
+  # Python cache
+  /app/**/__pycache__/** rw,
+  /app/**/*.pyc w,
+
+  # System libraries
+  /lib/** mr,
+  /usr/lib/** mr,
+  /usr/local/lib/** mr,
+
+  # System files
+  /etc/passwd r,
+  /etc/group r,
+  /etc/hosts r,
+  /etc/hostname r,
+  /etc/resolv.conf r,
+  /etc/nsswitch.conf r,
+  /etc/ssl/certs/** r,
+
+  # Proc access
+  /proc/** r,
+
+  # Network access
+  network,
+
+  # Allow read access to most of the filesystem
+  /** r,
+
+  # Deny dangerous areas
+  deny /root/** rwklx,
+  deny /etc/shadow rwklx,
+  deny /boot/** rwklx,
+  deny /sys/firmware/** rwklx,
+}

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - My Podcasts</title>
+    <link rel="stylesheet" href="static/styles.css">
+    <script src="static/lang/i18n.js"></script>
+</head>
+<body>
+    <header>
+        <button class="back-button" onclick="window.location.href = ingressBase + '/'" data-i18n="header.back">
+            &larr; Back
+        </button>
+        <span data-i18n="settings.title">Settings</span>
+    </header>
+
+
+    
+    <div class="container">
+        <div class="settings-card">
+            <h2 class="settings-title" data-i18n="settings.title">Settings</h2>
+
+            <!-- NOVA SEKCIJA: Jezikovne nastavitve -->
+            <form id="languageSettingsForm">
+                <div class="settings-section">
+                    <h3 data-i18n="settings.language_settings">Language Settings</h3>
+                    <div class="settings-group">
+                        <div class="settings-input-row">
+                            <div class="settings-input-item">
+                                <label for="languageSelect" data-i18n="settings.language">Language:</label>
+                                <select id="languageSelect" onchange="changeLanguage()">
+                                    <option value="en" data-i18n="settings.english">English</option>
+                                    <option value="sl" data-i18n="settings.slovenian">Slovenian</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="save-button" data-i18n="settings.save_language_settings">Save Language Settings</button>
+            </form>
+
+            <!-- Ločilna črta med sekcijami -->
+            <div class="settings-divider"></div>
+            
+            <!-- Avtomatska posodobitev -->
+            <form id="updateSettingsForm">
+                <div class="settings-section">
+                <h3 data-i18n="settings.automatic_update">Automatic Update</h3>
+                <div class="settings-group">
+                    <div class="settings-input">
+                        <input type="radio" id="autoUpdateOn" name="autoUpdate" value="1">
+                        <label for="autoUpdateOn" data-i18n="settings.enabled">Enabled</label>
+                    </div>
+                    <div class="settings-input">
+                        <input type="radio" id="autoUpdateOff" name="autoUpdate" value="0">
+                        <label for="autoUpdateOff" data-i18n="settings.disabled">Disabled</label>
+                    </div>
+                </div>
+                    
+                    <div id="autoUpdateSettings">
+                        <div class="settings-input-row">
+                            <div class="settings-input-item">
+                            <label for="updateFrequency" data-i18n="settings.update_frequency">Update Frequency:</label>
+                            <select id="updateFrequency">
+                                <option value="24" data-i18n="settings.daily">Daily</option>
+                                <option value="168" data-i18n="settings.weekly">Weekly</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-input-item">
+                            <label for="updateTime" data-i18n="settings.update_time">Update Time:</label>
+                            <input type="time" id="updateTime" value="03:00">
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="save-button" data-i18n="settings.save_update_settings">Save Update Settings</button>
+            </form>
+
+            <!-- Ločilna črta med sekcijami -->
+            <div class="settings-divider"></div>
+
+            <!-- Nastavitev za izbiro predvajalnikov -->
+            <form id="playersSettingsForm">
+                <div class="settings-section">
+                    <h3 data-i18n="settings.media_player_selection">Media Player Selection</h3>
+                    <p class="settings-description" data-i18n="settings.media_player_description">Select players that will be shown when choosing episode playback.</p>
+                    
+                    <div class="players-container">
+                        <div id="loadingPlayers" class="loading" data-i18n="states.loading_players">Loading players...</div>
+                        <div id="playersError" class="error" style="display: none;" data-i18n="forms.player_error">Error loading players.</div>
+                        <div id="playersSelect" class="settings-group players-grid">
+                            <!-- Tu se bodo dinamično dodali predvajalniki -->
+                        </div>
+                        <div class="player-actions">
+                            <button type="button" class="secondary-button" id="selectAllPlayers" data-i18n="settings.select_all_players">Select All</button>
+                            <button type="button" class="secondary-button" id="deselectAllPlayers" data-i18n="settings.deselect_all_players">Deselect All</button>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="save-button" data-i18n="settings.save_selected_players">Save Selected Players</button>
+            </form>
+
+            <!-- Ločilna črta med sekcijami -->
+            <div class="settings-divider"></div>
+
+            <!-- NOVA SEKCIJA: Upravljanje uporabnikov -->
+            <form id="userSettingsForm">
+                <div class="settings-section">
+                    <h3 data-i18n="settings.user_management">User Management</h3>
+                    <p class="settings-description" data-i18n="settings.user_management_description">Select central user (for use on tablets/TV).</p>
+                    
+                    <div class="users-container">
+                        <div id="loadingUsers" class="loading" data-i18n="states.loading_users">Loading users...</div>
+                        <div id="usersError" class="error" style="display: none;">Error loading users.</div>
+                        
+                        <!-- Seznam uporabnikov -->
+                        <div class="settings-group">
+                            <div class="settings-input-row">
+                                <div class="settings-input-item">
+                                <label for="tabUserSelect" data-i18n="settings.central_user">Central User:</label>
+                                <select id="tabUserSelect">
+                                    <option value="" data-i18n="settings.select_user">Select user...</option>
+                                    <!-- Tu se bodo dinamično dodali uporabniki -->
+                                </select>
+                                <p class="input-help" data-i18n="settings.central_user_help">Selected user will be set as central user for access via tablets, TV and other shared devices.</p>
+                            </div>
+                            </div>
+                        </div>
+
+                        <!-- Seznam vseh uporabnikov z informacijami -->
+                        <div class="users-list" id="usersList">
+                            <!-- Tu se bo dinamično naložil seznam uporabnikov -->
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="save-button" data-i18n="settings.save_user_settings">Save User Settings</button>
+            </form>
+
+            <!-- Ločilna črta med sekcijami -->
+            <div class="settings-divider"></div>
+
+            <!-- Sekcija za skrite podcaste -->
+            <div class="settings-section">
+                <h3 data-i18n="settings.hidden_podcasts">Hidden Podcasts</h3>
+                <p class="settings-description" data-i18n="settings.hidden_podcasts_description">Here are shown all podcasts you have hidden. You can show them again.</p>
+                
+                <div id="hiddenPodcastsContainer">
+                    <div id="loadingHiddenPodcasts" class="loading" data-i18n="states.loading_hidden_podcasts">Loading hidden podcasts...</div>
+                    <div id="hiddenPodcastsError" class="error" style="display: none;">Error loading hidden podcasts.</div>
+                    <div id="hiddenPodcastsList" class="podcasts-grid">
+                        <!-- Skriti podcasti bodo naloženi tukaj -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Global variable
+        const ingressBase = window.location.pathname.split('/').slice(0, -1).join('/');
+
+        // Funkcija za spremembo jezika
+        async function changeLanguage() {
+            const languageSelect = document.getElementById('languageSelect');
+            const selectedLang = languageSelect.value;
+        
+            if (window.i18n) {
+                await window.i18n.changeLanguage(selectedLang);
+            
+                // Refresh dynamic content that might not have data-i18n attributes
+                if (typeof loadUsers === 'function') {
+                    loadUsers();
+                }
+            
+                showToast(window.i18n.t('messages.settings_saved'));
+            }
+        }
+    
+        // Set current language in dropdown when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (window.i18n) {
+                    const currentLang = window.i18n.getCurrentLanguage();
+                    const languageSelect = document.getElementById('languageSelect');
+                    if (languageSelect) {
+                        languageSelect.value = currentLang;
+                    }
+                }
+            }, 100);
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load settings
+            loadSettings();
+            loadAllPlayers();
+            loadUsers(); // Nova funkcija za nalaganje uporabnikov
+            
+            // Handle auto update toggle
+            const autoUpdateOn = document.getElementById('autoUpdateOn');
+            const autoUpdateOff = document.getElementById('autoUpdateOff');
+            const autoUpdateSettings = document.getElementById('autoUpdateSettings');
+            
+            function toggleAutoUpdateSettings() {
+                if (autoUpdateOn.checked) {
+                    autoUpdateSettings.style.display = 'block';
+                } else {
+                    autoUpdateSettings.style.display = 'none';
+                }
+            }
+            
+            autoUpdateOn.addEventListener('change', toggleAutoUpdateSettings);
+            autoUpdateOff.addEventListener('change', toggleAutoUpdateSettings);
+            
+            // Form submissions
+            const updateSettingsForm = document.getElementById('updateSettingsForm');
+            const playersSettingsForm = document.getElementById('playersSettingsForm');
+            const userSettingsForm = document.getElementById('userSettingsForm');
+
+            if (updateSettingsForm) {
+                updateSettingsForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    await saveUpdateSettings();
+                });
+            }
+
+            if (playersSettingsForm) {
+                playersSettingsForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    await savePlayerSettings();
+                });
+            }
+
+            // Dodamo poslušalec za nov obrazec z uporabniškimi nastavitvami
+            if (userSettingsForm) {
+                userSettingsForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    await saveUserSettings();
+                });
+            }
+
+            // Dodamo poslušalca za admin checkboxe
+            document.addEventListener('change', async (event) => {
+                if (event.target.classList.contains('admin-checkbox')) {
+                    const userId = event.target.dataset.userId;
+                    const isAdmin = event.target.checked;
+                    const success = await updateUserAdminStatus(userId, isAdmin);
+                    
+                    if (!success) {
+                        // Če pride do napake, vrnemo checkbox v prejšnje stanje
+                        event.target.checked = !isAdmin;
+                    }
+                }
+            });
+        });
+        
+        // Show toast message function
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            toast.style.backgroundColor = type === 'error' ? '#dc3545' : '#28a745';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Load settings from server
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${ingressBase}/api/settings`);
+                
+                if (!response.ok) {
+                    throw new Error('Error loading settings.');
+                }
+                
+                const settings = await response.json();
+                
+                // Set form values based on loaded settings
+                const autoUpdateOn = document.getElementById('autoUpdateOn');
+                const autoUpdateOff = document.getElementById('autoUpdateOff');
+                const updateFrequency = document.getElementById('updateFrequency');
+                const updateTime = document.getElementById('updateTime');
+                const autoUpdateSettings = document.getElementById('autoUpdateSettings');
+                
+                if (autoUpdateOn && autoUpdateOff) {
+                    if (settings.avtomatsko === 1) {
+                        autoUpdateOn.checked = true;
+                        autoUpdateSettings.style.display = 'block';
+                    } else {
+                        autoUpdateOff.checked = true;
+                        autoUpdateSettings.style.display = 'none';
+                    }
+                }
+                
+                if (updateFrequency) {
+                    updateFrequency.value = settings.interval.toString();
+                }
+                
+                if (updateTime && settings.cas_posodobitve) {
+                    updateTime.value = settings.cas_posodobitve;
+                }
+                
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showToast('Error loading settings.', 'error');
+            }
+        }
+        
+        // Save update settings to server
+        async function saveUpdateSettings() {
+            try {
+                const autoUpdate = document.querySelector('input[name="autoUpdate"]:checked');
+                const updateFrequency = document.getElementById('updateFrequency');
+                const updateTime = document.getElementById('updateTime');
+                
+                if (!autoUpdate || !updateFrequency || !updateTime) {
+                    throw new Error('Missing update settings.');
+                }
+                
+                const settings = {
+                    avtomatsko: parseInt(autoUpdate.value),
+                    interval: parseInt(updateFrequency.value),
+                    cas_posodobitve: updateTime.value
+                };
+                
+                const response = await fetch(`${ingressBase}/api/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error saving update settings.');
+                }
+                
+                showToast(window.i18n.t('messages.settings_saved'));
+                
+            } catch (error) {
+                console.error('Error saving update settings:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Save player settings to server
+        async function savePlayerSettings() {
+            try {
+                const selectedCheckboxes = document.querySelectorAll('input[name="selectedPlayers"]:checked');
+                const selectedPlayers = Array.from(selectedCheckboxes).map(checkbox => ({
+                    entity_id: checkbox.value,
+                    name: checkbox.dataset.name
+                }));
+                
+                const response = await fetch(`${ingressBase}/api/media_players/selected`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ players: selectedPlayers })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error saving players.');
+                }
+                
+                showToast(window.i18n.t('messages.players_saved'));
+                
+            } catch (error) {
+                console.error('Error saving players:', error);
+                showToast(error.message, 'error');
+            }
+        }
+        
+        // Nalaganje in upravljanje predvajalnikov
+        async function loadAllPlayers() {
+            const playersSelect = document.getElementById('playersSelect');
+            const loadingPlayers = document.getElementById('loadingPlayers');
+            const playersError = document.getElementById('playersError');
+            
+            try {
+                loadingPlayers.style.display = 'block';
+                playersSelect.innerHTML = '';
+                playersError.style.display = 'none';
+                
+                // Pridobi vse razpoložljive predvajalnike
+                const allResponse = await fetch(`${ingressBase}/api/media_players/all`);
+                if (!allResponse.ok) throw new Error('Error loading all players');
+                const allData = await allResponse.json();
+                
+                // Pridobi izbrane predvajalnike
+                const selectedResponse = await fetch(`${ingressBase}/api/media_players/selected`);
+                if (!selectedResponse.ok) throw new Error('Error loading selected players');
+                const selectedData = await selectedResponse.json();
+                
+                // Ustvari mapo izbranih predvajalnikov za hitrejše preverjanje
+                const selectedMap = {};
+                for (const player of selectedData.players) {
+                    selectedMap[player.entity_id] = true;
+                }
+                
+                if (allData.players && allData.players.length > 0) {
+                    // Sortiraj predvajalnike po imenu
+                    allData.players.sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    // Izriši vse predvajalnike
+                    for (const player of allData.players) {
+                        const isSelected = selectedMap[player.entity_id] || Object.keys(selectedMap).length === 0;
+                        
+                        const playerItem = document.createElement('div');
+                        playerItem.className = 'player-item';
+                        playerItem.innerHTML = `
+                            <input type="checkbox" id="player_${player.entity_id}" 
+                                   name="selectedPlayers" value="${player.entity_id}" 
+                                   data-name="${player.name}" 
+                                   ${isSelected ? 'checked' : ''}>
+                            <label for="player_${player.entity_id}">${player.name}</label>
+                        `;
+                        playersSelect.appendChild(playerItem);
+                    }
+                    
+                    loadingPlayers.style.display = 'none';
+                } else {
+                    playersSelect.innerHTML = '<p>No players found.</p>';
+                    loadingPlayers.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading players:', error);
+                loadingPlayers.style.display = 'none';
+                playersError.style.display = 'block';
+                playersError.textContent = 'Error loading players: ' + error.message;
+            }
+        }
+        
+        // Gumbi za izbiro vseh/nobenega predvajalnika
+        document.getElementById('selectAllPlayers').addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('input[name="selectedPlayers"]');
+            checkboxes.forEach(checkbox => checkbox.checked = true);
+        });
+        
+        document.getElementById('deselectAllPlayers').addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('input[name="selectedPlayers"]');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+        });
+
+        // NOVE FUNKCIJE ZA UPRAVLJANJE UPORABNIKOV
+        
+        // Funkcija za nalaganje uporabnikov
+        async function loadUsers() {
+            const tabUserSelect = document.getElementById('tabUserSelect');
+            const usersList = document.getElementById('usersList');
+            const loadingUsers = document.getElementById('loadingUsers');
+            const usersError = document.getElementById('usersError');
+            
+            if (!tabUserSelect || !usersList || !loadingUsers) return;
+            
+            try {
+                loadingUsers.style.display = 'block';
+                tabUserSelect.innerHTML = '<option value="" data-i18n="settings.select_user">Select user...</option>';
+                usersList.innerHTML = '';
+                usersError.style.display = 'none';
+                
+                // Pridobi vse uporabnike iz API-ja
+                const response = await fetch(`${ingressBase}/api/users`);
+                if (!response.ok) throw new Error('Error loading users');
+                const userData = await response.json();
+                
+                if (userData.users && userData.users.length > 0) {
+                    // Napolnimo izbirni seznam
+                    userData.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.display_name;
+                        option.selected = user.is_tab_user === 1;
+                        tabUserSelect.appendChild(option);
+                    });
+                    
+                    // Prikažemo seznam vseh uporabnikov z informacijami
+                    const usersTable = document.createElement('table');
+                    usersTable.className = 'users-table';
+                    usersTable.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th data-i18n="settings.username">Username</th>
+                                <th data-i18n="settings.display_name">Display Name</th>
+                                <th data-i18n="settings.admin">Admin</th>
+                                <th data-i18n="settings.central_user_column">Tab</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${userData.users.map(user => `
+                                <tr>
+                                    <td>${user.username}</td>
+                                    <td>${user.display_name}</td>
+                                    <td>
+                                        <input type="checkbox" 
+                                            class="admin-checkbox" 
+                                            data-user-id="${user.id}" 
+                                            ${user.is_admin ? 'checked' : ''}>
+                                    </td>
+                                    <td>${user.is_tab_user ? '✓' : '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    `;
+                    usersList.appendChild(usersTable);
+                    
+                    loadingUsers.style.display = 'none';
+                } else {
+                    usersList.innerHTML = '<p>No users found.</p>';
+                    loadingUsers.style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error('Napaka pri nalaganju uporabnikov:', error);
+                loadingUsers.style.display = 'none';
+                usersError.style.display = 'block';
+                usersError.textContent = 'Error loading users: ' + error.message;
+            }
+        }
+        
+        // Funkcija za formatiranje datuma
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+        
+        // Funkcija za shranjevanje uporabniških nastavitev
+        async function saveUserSettings() {
+            try {
+                const tabUserSelect = document.getElementById('tabUserSelect');
+                
+                if (!tabUserSelect) {
+                    throw new Error('Missing user settings elements.');
+                }
+                
+                const settings = {
+                    tab_user_id: tabUserSelect.value || null
+                };
+                
+                const response = await fetch(`${ingressBase}/api/users/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error saving user settings.');
+                }
+                
+                showToast(window.i18n.t('messages.user_settings_saved'));
+                
+                // Ponovno naložimo uporabnike, da osvežimo seznam
+                await loadUsers();
+                
+            } catch (error) {
+                console.error('Error saving user settings:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        // NOVA koda - dodamo takoj za loadUsers() funkcijo
+        async function updateUserAdminStatus(userId, isAdmin) {
+            try {
+                const response = await fetch(`${ingressBase}/api/users/admin_status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        is_admin: isAdmin ? 1 : 0
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error updating admin status.');
+                }
+
+                showToast(window.i18n.t('messages.admin_status_updated'));
+            } catch (error) {
+                console.error('Error updating admin status:', error);
+                showToast(error.message, 'error');
+                return false;
+            }
+            return true;
+        }
+        // Funkcija za nalaganje skritih podcastov
+    async function loadHiddenPodcasts() {
+    const hiddenPodcastsList = document.getElementById('hiddenPodcastsList');
+    const loadingHiddenPodcasts = document.getElementById('loadingHiddenPodcasts');
+    const hiddenPodcastsError = document.getElementById('hiddenPodcastsError');
+    
+    if (!hiddenPodcastsList || !loadingHiddenPodcasts) return;
+    
+        try {
+            loadingHiddenPodcasts.style.display = 'block';
+            hiddenPodcastsList.innerHTML = '';
+            hiddenPodcastsError.style.display = 'none';
+        
+            const response = await fetch(`${ingressBase}/api/podcasts/hidden`);
+            if (!response.ok) throw new Error('Error loading hidden podcasts');
+        
+            const podcasts = await response.json();
+        
+            loadingHiddenPodcasts.style.display = 'none';
+        
+            if (podcasts.length === 0) {
+                hiddenPodcastsList.innerHTML = `
+                    <div class="empty-state">
+                        <p data-i18n="settings.no_hidden_podcasts">You have no hidden podcasts.</p>
+                    </div>
+                `;
+                // Apply translations to new elements
+                if (window.i18n) {
+                    window.i18n.applyTranslations();
+                }
+                return; // Dodano: če ni podcastov, končamo funkcijo
+            }
+
+            hiddenPodcastsList.innerHTML = podcasts.map(podcast => `
+                <div class="podcast-card">
+                    <img src="${podcast.image_url || 'https://via.placeholder.com/150'}" 
+                        alt="${podcast.naslov}"
+                        onerror="this.src='https://via.placeholder.com/150'">
+                    <h3>${podcast.naslov}</h3>
+                    ${podcast.user_display_name ? `<p class="podcast-owner">Author: ${podcast.user_display_name}</p>` : ''}
+                    ${podcast.is_public ? `<span class="public-badge">Public</span>` : ''}
+                    <button onclick="showPodcast(${podcast.id}, this)" class="show-btn" data-i18n="navigation.show">
+                        Show Again
+                    </button>
+                </div>
+            `).join('');
+
+            // Apply translations to new elements
+            if (window.i18n) {
+                window.i18n.applyTranslations();
+            }
+        } catch (error) {
+            console.error('Error loading hidden podcasts:', error);
+            loadingHiddenPodcasts.style.display = 'none';
+            hiddenPodcastsError.style.display = 'block';
+            hiddenPodcastsError.textContent = 'Error loading hidden podcasts: ' + error.message;
+        }
+    }
+
+    // Funkcija za ponovno prikazovanje skritega podcasta
+    async function showPodcast(podcastId, buttonElement) {
+        try {
+            const response = await fetch(`${ingressBase}/api/podcasts/${podcastId}/show`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        
+            if (!response.ok) {
+                throw new Error('Error showing podcast.');
+            }
+        
+            showToast(window.i18n.t('messages.podcast_shown'));
+        
+        // Odstranimo celoten podcast-card element
+        const podcastCard = buttonElement.closest('.podcast-card');
+        if (podcastCard) {
+            podcastCard.style.transition = 'all 0.3s ease';
+            podcastCard.style.opacity = '0';
+            setTimeout(() => {
+                podcastCard.remove();
+                
+                // Preverimo, če je seznam prazen
+                    const remainingCards = document.querySelectorAll('#hiddenPodcastsList .podcast-card');
+                    if (remainingCards.length === 0) {
+                        document.getElementById('hiddenPodcastsList').innerHTML = `
+                                <div class="empty-state">
+                                <p data-i18n="settings.no_hidden_podcasts">You have no hidden podcasts.</p>
+                            </div>
+                        `;
+                        // Apply translations to new elements
+                        if (window.i18n) {
+                            window.i18n.applyTranslations();
+                        }
+                    }         
+            }, 300);
+        } else {
+            // Če ne najdemo elementa, ponovno naložimo
+            await loadHiddenPodcasts();
+            }
+        } catch (error) {
+            showToast(error.message, 'error');
+        }
+    }
+
+    // Naložimo skrite podcaste ob nalaganju strani
+    document.addEventListener('DOMContentLoaded', () => {
+        loadHiddenPodcasts();
+    });
+    </script>
+</body>
+</html>

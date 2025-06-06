@@ -1,0 +1,1696 @@
+/* ==========================================================================
+   Globalni stili in spremenljivke
+   From index.html and shared across all pages
+   ========================================================================== */
+
+   :root {
+    --primary-color: #007BFF;
+    --primary-dark: #0056b3;
+    --background-color: #f9f9f9;
+    --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    --spacing: 1em;
+    --danger-color: #dc3545;
+    --danger-dark: #c82333;
+    --success-color: #28a745;
+    --success-dark: #218838;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: var(--background-color);
+    min-height: 100vh;
+}
+
+/* ==========================================================================
+   Skupni elementi 
+   Used across multiple pages
+   ========================================================================== */
+
+/* Header styles */
+header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: var(--spacing);
+    text-align: left;
+    font-size: 1.5em;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-icon {
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.settings-icon:hover {
+    transform: rotate(90deg);
+}
+
+/* Container and layout */
+.container {
+    padding: 1em;
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 768px) {
+    .container {
+        flex-direction: row;
+        gap: 2em;
+        padding: 2em;
+    }
+}
+
+/* Forms and inputs - used in multiple pages */
+.form-group {
+    margin-bottom: 1em;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5em;
+    color: #666;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 0.8em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+    margin-bottom: 1em;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Button styles - shared across pages */
+button {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.8em 1em;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s;
+    flex: 1;
+}
+
+button:hover {
+    background-color: var(--primary-dark);
+}
+
+.delete-btn {
+    background-color: var(--danger-color);
+}
+
+.delete-btn:hover {
+    background-color: var(--danger-dark);
+}
+
+/* State indicators */
+.loading {
+    text-align: center;
+    padding: 2em;
+    color: #666;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3em;
+    color: #666;
+}
+
+.error {
+    color: var(--danger-color);
+    padding: 1em;
+    border: 1px solid var(--danger-color);
+    border-radius: 4px;
+    margin: 1em 0;
+}
+
+/* Toast notifications - used across all pages */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    padding: 1em 2em;
+    border-radius: 4px;
+    display: none;
+    z-index: 1000;
+}
+
+/* ==========================================================================
+   HOME PAGE STYLES (index.html)
+   ========================================================================== */
+
+/* Left panel with form and latest episodes */
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5em;
+    width: 100%;
+    margin-bottom: 1.5em;
+}
+
+.form-container, .latest-episodes-container {
+    background: white;
+    padding: 1.5em;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 0;
+}
+
+.paused-episodes-container {
+    background: white;
+    padding: 1.5em;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1.5em;
+    border-left: 4px solid #ffc107; /* Rumena označba za "na pavzi" */
+}
+
+.paused-episodes-container h2 {
+    margin-bottom: 1em;
+    color: #e67e22; /* Oranžna barva za naslov "Epizode na pavzi" */
+    font-size: 1.1em;
+}
+
+.latest-episodes-container {
+    background: white;
+    padding: 1.5em;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 0;
+}
+
+@media (min-width: 768px) {
+    .left-panel {
+        flex: 0 0 300px;
+        margin-bottom: 0;
+        flex-shrink: 0;
+    }
+}
+
+.form-container h2, .latest-episodes-container h2 {
+    margin-bottom: 1em;
+    color: var(--primary-color);
+}
+
+/* Podcast list section */
+.podcast-list {
+    flex: 1;
+}
+
+.divider-button {
+    width: 100%;
+    padding: 1em;
+    font-size: 1em;
+    background-color: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 1.5em;
+    transition: background-color 0.3s;
+}
+
+.divider-button:hover {
+    background-color: var(--success-dark);
+}
+
+.podcasts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5em;
+    padding: 0.5em;
+}
+
+@media (min-width: 768px) {
+    .podcasts-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+}
+
+/* Podcast card styles */
+.podcast-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 1em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+}
+
+.podcast-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.podcast-card img {
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-bottom: 1em;
+}
+
+.podcast-card h3 {
+    margin: 0.5em 0;
+    text-align: center;
+    color: #333;
+}
+
+.card-buttons {
+    display: flex;
+    gap: 0.5em;
+    width: 100%;
+    margin-top: auto;
+}
+
+/* Gumb za skrivanje podcastov */
+.hide-btn {
+    background-color: transparent;
+    color: #dc3545; /* Sprememba barve v rdečo */
+    border: none;
+    padding: 0.2em; /* Manjši padding za boljšo poravnavo */
+    margin: 0;
+    font-size: 0.8em; /* Manjša velikost, da se ujema z oznako Javno */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hide-btn:hover {
+    color: #c82333; /* Temnejša rdeča ob prehozu miške */
+}
+
+/* Gumb za ponovno prikazovanje */
+.show-btn {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.5em;
+    margin: 0.5em 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    width: 100%;
+}
+
+.show-btn:hover {
+    background-color: var(--primary-dark);
+}
+
+
+/* ==========================================================================
+   Sekcija zadnjih epizod
+   For the sidebar in index.html
+   ========================================================================== */
+
+/* Scrollable episodes container */
+.episodes-scrollable {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) #f0f0f0;
+}
+
+/* Customize scrollbar for WebKit browsers (Chrome, Safari) */
+.episodes-scrollable::-webkit-scrollbar {
+    width: 8px;
+}
+
+.episodes-scrollable::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+
+.episodes-scrollable::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 4px;
+}
+
+/* Episode item styling */
+.episode-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.episode-item:hover {
+    background-color: #f5f5f5;
+}
+
+.episode-item:last-child {
+    border-bottom: none;
+}
+
+.episode-thumbnail {
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.episode-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.episode-title, .episode strong, h1, h2, h3 {
+    font-weight: bold;
+    margin-bottom: 4px;
+    font-size: 1.05em;
+    color: #333;
+    word-break: break-word;
+    hyphens: auto;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.episode-podcast-name {
+    color: #555;
+    font-size: 0.95em;
+    margin-bottom: 4px;
+}
+
+.episode-date {
+    color: #888;
+    font-size: 0.85em;
+}
+
+.episode-playback-time {
+    color: #e67e22;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.paused-episodes-container .paused-episode {
+    background-color: #fff8e1;
+    transition: background-color 0.2s;
+}
+
+.paused-episodes-container .paused-episode:hover {
+    background-color: #fff3cd;
+}
+
+.view-all-button {
+    margin-top: 1em;
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--primary-color);
+    cursor: pointer;
+}
+
+.view-all-button:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Stili strani s podcastom (podcast.html)
+   ========================================================================== */
+
+   .header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.5em;
+    display: flex;
+    align-items: center;
+}
+
+    .header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.header button {
+    background-color: white;
+    color: var(--primary-color);
+    border: none;
+    padding: 0.5em 1em;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-right: 1em;
+    flex: 0;
+}
+
+.header button:hover {
+    background-color: #e6e6e6;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.content {
+    margin: 1em auto;
+    width: 90%;
+    max-width: 900px;
+    background: white;
+    padding: 1.5em;
+    border-radius: 4px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Podcast info section */
+.podcast-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 1em;
+    margin-bottom: 1.5em;
+}
+
+.podcast-info img {
+    width: 150px;
+    height: 150px;
+    border-radius: 0;
+    object-fit: cover;
+}
+
+.podcast-info h2 {
+    margin-top: 0;
+    font-size: 1.8em;
+}
+
+/* Episode list styles */
+.episode {
+    padding: 0.8em 0;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Nov episode-header za boljšo organizacijo naslovne vrstice */
+.episode-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+/* Stil za prikaz pozicije predvajanja */
+.playback-position {
+    font-size: 0.9em;
+    color: #666;
+    background-color: #f5f5f5;
+    padding: 0.2em 0.5em;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+/* Posebni stili za gumbe z različnimi stanji */
+.play-button[data-position]:not([data-position="0"]) {
+    background-color: #28a745;  /* Zelena barva za nadaljevanje */
+}
+
+.play-button[data-position]:not([data-position="0"]):hover {
+    background-color: #218838;  /* Temnejša zelena ob hover */
+}
+
+/* Responsive prilagoditve */
+@media (max-width: 768px) {
+    .episode-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .playback-position {
+        margin-left: 0;
+        margin-top: 0.3em;
+    }
+}
+
+/* Animacija za gumb predvajanja */
+.play-button {
+    transition: background-color 0.3s ease;
+}
+
+/* Izboljšan prikaz ikon statusa */
+.episode-header strong {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+}
+
+/* Status ikone */
+.status-icons {
+    display: inline-flex;
+    gap: 0.3em;
+    align-items: center;
+}
+
+/* Prilagoditev za mobile view */
+@media (max-width: 480px) {
+    .episode-controls {
+        flex-direction: column;
+        gap: 0.5em;
+    }
+    
+    .episode-controls button,
+    .episode-controls select {
+        width: 100%;
+    }
+}
+
+.episode strong {
+    font-size: 1.1em;
+    display: block;
+    margin-bottom: 0.3em;
+}
+
+.episode p {
+    margin: 0.3em 0;
+    color: #555;
+}
+
+audio {
+    width: 100%;
+    margin-top: 1em;
+}
+
+/* Episode controls */
+.episode-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-top: 0.5em;
+    flex-wrap: nowrap;
+}
+
+.play-button {
+    min-width: auto;
+    flex: 0;
+    padding: 0.4em 0.8em;
+    font-size: 0.9em;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+    white-space: nowrap; /* Prepreči prelom besedila */
+}
+
+.play-button:hover {
+    background-color: #e0e0e0;
+}
+
+.player-select {
+    max-width: 120px;
+    flex: 0;
+    padding: 0.4em 0.5em;
+    border-radius: 2px;
+    border: 1px solid #ccc;
+    font-size: 0.7em;
+}
+
+.delete-button {
+    min-width: auto;
+    flex: 0;
+    padding: 0.4em 0.8em;
+    font-size: 0.9em;
+    background-color: var(--danger-color);
+    color: white;
+}
+
+/* Upload controls */
+#rssXmlInput {
+    display: inline-block;
+    margin-right: 0.5em;
+    padding: 0.4em;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+}
+
+#addMissingBtn {
+    display: inline-block;
+    background-color: var(--success-color);
+    color: white;
+    border: none;
+    padding: 0.4em 0.8em;
+    border-radius: 2px;
+    cursor: pointer;
+    margin-bottom: 1em;
+    font-size: 0.9em;
+}
+
+#addMissingBtn:hover {
+    background-color: var(--success-dark);
+}
+
+/* Pagination styles */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    margin-top: 1.5em;
+    flex-wrap: wrap;
+}
+
+.pagination button {
+    margin: 0.2em;
+    padding: 0.5em 1em;
+    min-width: 80px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    flex-shrink: 1;
+}
+
+.pagination button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.page-input-container {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    margin: 0.2em;
+    flex-wrap: nowrap;
+}
+
+.page-input-container input {
+    width: 60px;
+    padding: 0.5em;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    text-align: center;
+    font-size: 0.85em;
+}
+
+.page-input-container button {
+    padding: 0.5em 0.8em;
+    min-width: 60px;
+}
+
+#pageInfo {
+    margin: 0.2em 0.5em;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.podcast-status-row {
+    display: flex;
+    justify-content: flex-start; /* Sprememba iz space-between na flex-start */
+    align-items: center;
+    margin: 0.5em 0;
+    gap: 8px; /* Dodamo manjšo konstanto razdaljo med elementi */
+}
+
+.player-select-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex: 1;
+    min-width: 0; /* Prepreči preširoko raztegovanje */
+}
+
+.playback-position {
+    font-size: 0.9em;
+    color: #666;
+    white-space: nowrap;
+}
+
+/* Responsivne prilagoditve za player-select-container */
+@media (max-width: 480px) {
+    .episode-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .player-select-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3em;
+    }
+    
+    .player-select {
+        max-width: none;
+        width: 100%;
+    }
+}
+
+/* Posodobimo tudi stil za gumb */
+.hide-btn {
+    background-color: transparent;
+    color: #777;
+    border: none;
+    padding: 0.3em 0.5em;
+    margin: 0;
+    font-size: 1em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.hide-btn:hover {
+    color: #333;
+}
+
+/* Medijske poizvedbe za dodatno prilagoditev na manjših zaslonih */
+@media (max-width: 768px) {
+    .pagination {
+        gap: 0.3em;
+    }
+    
+    .pagination button {
+        min-width: 60px; /* Manjša minimalna širina na manjših zaslonih */
+        font-size: 0.85em;
+    }
+}
+
+/* Za najmanjše zaslone (mobilni telefoni) */
+@media (max-width: 480px) {
+    .pagination button {
+        padding: 0.6em 0.4em;
+        margin: 0.2em 0.1em;
+        min-width: auto; /* Odstranimo minimalno širino */
+    }
+    
+    .page-input-container {
+        flex: 1; /* Raztegne se čez preostali prostor */
+    }
+    
+    .page-input-container input {
+        width: 50px;
+        padding: 0.6em 0.3em;
+    }
+    
+    #pageInfo {
+        font-size: 0.8em;
+        margin: 0.2em;
+    }
+}
+
+/* ==========================================================================
+   Stili strani z nastavitvami (settings.html)
+   ========================================================================== */
+
+.back-button {
+    background-color: transparent;
+    color: white;
+    border: none;
+    font-size: 1em;
+    cursor: pointer;
+    margin-right: 1em;
+    display: flex;
+    align-items: center;
+}
+
+.back-button:hover {
+    text-decoration: underline;
+}
+
+.settings-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 2em;
+    margin-bottom: 2em;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.settings-title {
+    color: var(--primary-color);
+    margin-bottom: 1.5em;
+    font-size: 1.5em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5em;
+}
+
+.settings-section {
+    margin-bottom: 2em;
+}
+
+.settings-section h3 {
+    color: #444;
+    margin-bottom: 1em;
+    font-size: 1.2em;
+}
+
+.settings-group {
+    margin-bottom: 1.5em;
+}
+
+/* Settings form controls */
+.settings-input {
+    display: flex;
+    gap: 1em;
+    align-items: center;
+    margin-bottom: 0.5em;
+}
+
+.settings-input input[type="radio"] {
+    margin: 0;
+}
+
+.settings-input label {
+    margin: 0;
+}
+
+.settings-input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    margin-bottom: 1em;
+}
+
+@media (min-width: 600px) {
+    .settings-input-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+.settings-input-item {
+    flex: 1;
+    min-width: 100%;
+}
+
+@media (min-width: 600px) {
+    .settings-input-item {
+        min-width: 200px;
+    }
+}
+
+.settings-input-item label {
+    display: block;
+    margin-bottom: 0.5em;
+    color: #666;
+}
+
+.settings-input-item select,
+.settings-input-item input[type="time"] {
+    width: 100%;
+    padding: 0.8em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.save-button {
+    width: 100%;
+    padding: 1em;
+    font-size: 1.1em;
+    margin-top: 1em;
+}
+
+/* Language selection (placeholder for future use) */
+.language-option {
+    display: flex;
+    align-items: center;
+    padding: 0.5em;
+    margin-bottom: 0.5em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.language-option:hover {
+    background-color: #f5f5f5;
+}
+
+.language-option.selected {
+    border-color: var(--primary-color);
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.language-flag {
+    width: 24px;
+    height: 24px;
+    margin-right: 0.8em;
+}
+
+/* ==========================================================================
+   Stili za modalno okno (prikaz vseh epizod)
+   ========================================================================== */
+
+   .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    display: none;
+}
+
+.modal-container {
+    background-color: white;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 1em;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.modal-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin: 0;
+    flex: 1;
+}
+
+.close-modal {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: auto; 
+    height: auto; 
+    min-width: 24px; 
+    min-height: 24px;
+}
+
+.close-modal:hover {
+    opacity: 0.8; 
+}
+
+.modal-content {
+    padding: 1em;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px);
+}
+
+.modal-episodes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.modal-episode-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.modal-episode-item:hover {
+    background-color: #f5f5f5;
+}
+
+.modal-footer {
+    padding: 1em;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Stili za opis podcasta */
+.podcast-description {
+    margin-top: 10px;
+    color: #555;
+    font-size: 0.95em;
+    line-height: 1.5;
+    max-width: 600px;
+}
+
+.no-description {
+    color: #999;
+    font-style: italic;
+}
+
+/* Na večjih zaslonih vedno prikaži celoten opis in skrij preview in gumb */
+@media (min-width: 768px) {
+    .podcast-description .description-preview {
+        display: none !important;
+    }
+    
+    .podcast-description .description-full {
+        display: block !important;
+    }
+    
+    .podcast-description .show-more {
+        display: none !important;
+    }
+}
+
+/* Na manjših zaslonih v pokončnem položaju prikaži preview in gumb */
+@media (max-width: 767px) and (orientation: portrait) {
+    .podcast-description .description-preview {
+        display: block;
+    }
+    
+    .podcast-description .description-full {
+        display: none;
+    }
+    
+    /* .show-more se prikaže ali skrije na podlagi JavaScript logike, 
+       glede na to, ali je opis daljši od 50 znakov */
+}
+
+/* Stili za opis epizode */
+.episode-description {
+    margin: 8px 0;
+    color: #555;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.description-preview, .description-full {
+    margin-bottom: 5px;
+}
+
+.show-more {
+    color: #007BFF;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.show-more:hover {
+    text-decoration: underline;
+}
+
+/* Stili za prikaz predvajalnikov v nastavitvah */
+.settings-description {
+    margin-bottom: 1em;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.players-container {
+    margin-bottom: 1.5em;
+}
+
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.5em;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 1em;
+}
+
+.player-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.5em;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.player-item:hover {
+    background-color: #f0f0f0;
+}
+
+.player-item label {
+    margin: 0;
+    flex: 1;
+    cursor: pointer;
+    font-size: 0.9em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-actions {
+    display: flex;
+    gap: 0.5em;
+    margin-top: 0.5em;
+}
+
+.secondary-button {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+    padding: 0.5em 1em;
+    font-size: 0.85em;
+    flex: 1;
+}
+
+.secondary-button:hover {
+    background-color: #e0e0e0;
+}
+
+/* Ločilna črta med sekcijami v nastavitvah */
+.settings-divider {
+    border-top: 1px solid #eee;
+    margin: 2em 0;
+}
+
+/* ==========================================================================
+   Stili za tablet.html (centralni uporabnik)
+   ========================================================================== */
+
+/* Header modificiran za centralni dostop */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+#currentUserInfo {
+    color: white;
+    font-size: 0.85em;
+}
+
+#currentUserInfo strong {
+    font-weight: bold;
+    color: white;
+    font-size: 1em;
+}
+
+/* Tab users nastavitve */
+/* Dodamo nove stile za dropdown izbirnik */
+.user-selector {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-right: 1em;
+}
+
+.user-selector label {
+    color: white;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.user-select {
+    background-color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5em 1em;
+    font-size: 1em;
+    min-width: 200px;
+    cursor: pointer;
+    color: var(--primary-dark);
+}
+
+.user-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Prilagoditev header stila */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+/* Optimizacija za tablični prikaz */
+@media (max-width: 768px) {
+    .user-selector {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5em;
+    }
+    
+    .user-select {
+        min-width: 150px;
+    }
+    
+    .header-right {
+        flex-wrap: wrap;
+    }
+}
+
+/* Prilagoditev container stila za boljši izgled na tablici */
+.container {
+    padding: 1em;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Prilagoditev podcast sekcije */
+.podcast-section {
+    margin-top: 1em;
+    width: 100%;
+}
+
+/* Izboljšan prikaz stanja nalaganja */
+.loading {
+    text-align: center;
+    padding: 2em;
+    color: #666;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    margin: 1em 0;
+}
+
+/* Izboljšan prikaz praznega stanja */
+.empty-state {
+    text-align: center;
+    padding: 3em;
+    color: #666;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    margin: 1em 0;
+}
+
+.user-card h3 {
+    margin: 0.5em 0;
+    font-size: 1.1em;
+}
+
+.user-card p {
+    color: #666;
+    margin-bottom: 1em;
+    font-size: 0.9em;
+}
+
+.user-card button {
+    margin-top: auto;
+    width: 100%;
+}
+
+/* Sekcija s podcasti */
+.podcast-section {
+    width: 100%;
+    margin-top: 2em;
+}
+
+.podcast-section h2 {
+    margin-bottom: 1em;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+#selectedUserName {
+    font-weight: bold;
+}
+
+/* Dopolnitev za nastavitve */
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+.users-table th, .users-table td {
+    padding: 0.6em;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.users-table th {
+    font-weight: bold;
+    color: #555;
+    background-color: #f9f9f9;
+}
+
+.users-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.input-help {
+    color: #777;
+    font-size: 0.85em;
+    margin-top: 0.5em;
+    margin-bottom: 0;
+}
+
+.users-list {
+    margin-top: 1.5em;
+}
+
+/* Stili za prikaz podcastov v tablet.html */
+.latest-episodes-container {
+    background: white;
+    padding: 1.5em;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    margin-top: 2em;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .latest-episodes-container {
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* Dodatni CSS stili za podporo javnim/zasebnim podcastom */
+
+/* Stili za checkbox v obrazcu za dodajanje podcasta */
+.form-checkbox {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1em;
+}
+
+.form-checkbox input[type="checkbox"] {
+    margin-right: 0.5em;
+}
+
+.form-checkbox label {
+    margin: 0;
+    display: inline;
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* Oznaka za javne podcaste */
+.public-badge {
+    display: inline-block;
+    background-color: #28a745;
+    color: white;
+    padding: 0.2em 0.5em;
+    border-radius: 3px;
+    font-size: 0.8em;
+    margin: 0; /* Odstranimo margin, ker uporabljamo gap v nadrejenem elementu */
+}
+
+/* Prikaz avtorja podcasta */
+.podcast-owner {
+    color: #666;
+    font-size: 0.85em;
+    margin: 0.3em 0 0.5em;
+}
+
+/* Nastavi admin v nastavitvah */
+.admin-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.admin-checkbox:checked {
+    accent-color: var(--primary-color);
+}
+
+/* Izboljšamo izgled celice s checkboxom */
+.users-table td:nth-child(3) {
+    text-align: center;
+}
+
+.visibility-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 1em 0;
+}
+
+.visibility-toggle strong {
+    margin-right: 5px;
+}
+
+.visibility-toggle select {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+}
+
+/* ==========================================================================
+   Stili za tablet layout (tablet.html) - dodatni layout
+   ========================================================================== */
+
+.tablet-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 2em;
+    align-items: flex-start;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1em;
+}
+
+.left-sidebar {
+    flex: 0 0 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5em;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0; /* Prepreči preširoko raztegovanje */
+}
+
+/* Prilagoditve za levi sidebar */
+.left-sidebar .paused-episodes-container,
+.left-sidebar .latest-episodes-container {
+    background: white;
+    padding: 1.5em;
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+}
+
+.left-sidebar .paused-episodes-container {
+    border-left: 4px solid #ffc107;
+}
+
+.left-sidebar .latest-episodes-container {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Manjši episodes-scrollable za sidebar */
+.left-sidebar .episodes-scrollable {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) #f0f0f0;
+}
+
+.left-sidebar .episodes-scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+
+.left-sidebar .episodes-scrollable::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 3px;
+}
+
+.left-sidebar .episodes-scrollable::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 3px;
+}
+
+/* Posebni stili za epizode v sidebar-u */
+.left-sidebar .episode-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.left-sidebar .episode-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.left-sidebar .episode-thumbnail {
+    width: 50px;
+    height: 50px;
+}
+
+.left-sidebar .episode-title {
+    font-size: 0.95em;
+    line-height: 1.3;
+}
+
+.left-sidebar .episode-podcast-name {
+    font-size: 0.85em;
+}
+
+.left-sidebar .episode-date,
+.left-sidebar .episode-playback-time {
+    font-size: 0.8em;
+}
+
+/* Responsive prilagoditve za tablet */
+@media (max-width: 1200px) {
+    .left-sidebar {
+        flex: 0 0 300px;
+    }
+    
+    .left-sidebar .episodes-scrollable {
+        max-height: 250px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .tablet-layout {
+        flex-direction: row;
+        gap: 1em;
+    }
+    
+    .left-sidebar {
+        flex: none;
+        width: 250px;
+        flex-direction: column;
+        gap: 1em;
+    }
+    
+    .left-sidebar .paused-episodes-container,
+    .left-sidebar .latest-episodes-container {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    .left-sidebar .episodes-scrollable {
+        max-height: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tablet-layout {
+        padding: 0.5em;
+    }
+    
+    .left-sidebar {
+        flex-direction: column;
+        gap: 1em;
+    }
+    
+    .left-sidebar .paused-episodes-container,
+    .left-sidebar .latest-episodes-container {
+        min-width: auto;
+    }
+    
+    .left-sidebar .episodes-scrollable {
+        max-height: 180px;
+    }
+}
+
+/* Prilagoditev glavnega vsebinskega dela */
+.main-content .podcast-section {
+    width: 100%;
+}
+
+.main-content .podcast-section h2 {
+    margin-bottom: 1em;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+/* Izboljšan prikaz podcastov v glavnem delu */
+.main-content .podcasts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5em;
+    padding: 0.5em;
+}
+
+@media (min-width: 768px) {
+    .main-content .podcasts-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+}
+
+@media (min-width: 1200px) {
+    .main-content .podcasts-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+}
+
+/* Prilagoditev za boljšo vizualnost na tablicah */
+.main-content .loading,
+.main-content .empty-state {
+    text-align: center;
+    padding: 3em 2em;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    margin: 1em 0;
+    box-shadow: var(--card-shadow);
+}
+
+/* Animacije za boljšo uporabniško izkušnjo */
+.left-sidebar .paused-episodes-container,
+.left-sidebar .latest-episodes-container {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.left-sidebar .paused-episodes-container:hover,
+.left-sidebar .latest-episodes-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.left-sidebar .episode-item {
+    transition: background-color 0.2s ease;
+}
+
+.left-sidebar .episode-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Posebni stili za prazno stanje v sidebar-u */
+.left-sidebar .empty-state {
+    text-align: center;
+    padding: 2em 1em;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.left-sidebar .loading {
+    text-align: center;
+    padding: 1.5em;
+    color: #666;
+    font-size: 0.9em;
+}
+

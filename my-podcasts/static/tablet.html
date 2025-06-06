@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Podcasts - Central Access</title>
+    <link rel="stylesheet" href="static/styles.css">
+    <script src="static/lang/i18n.js"></script>
+</head>
+<body>
+    <header>
+        <span>My Podcasts</span>
+        <div class="header-right">
+            <div class="user-selector">
+                <label for="userSelect" data-i18n="tablet.selected_user">Selected User:</label>
+                <select id="userSelect" class="user-select">
+                    <option value="" data-i18n="tablet.select_user_placeholder">Select user...</option>
+                </select>
+            </div>
+            <img src="static/gearicon.png" alt="Settings" class="settings-icon" onclick="goToSettings()">
+        </div>
+    </header>
+
+    <div class="container tablet-layout">
+        <!-- Levi panel z epizodami -->
+        <div class="left-sidebar">
+            <!-- Epizode na pavzi izbranega uporabnika -->
+            <div class="paused-episodes-container" id="pausedEpisodesContainer" style="display: none;">
+                <h2 data-i18n="episodes.paused_episodes">Paused Episodes ⏸️</h2>
+                <div class="episodes-scrollable">
+                    <div id="pausedEpisodesList">
+                        <!-- Epizode na pavzi bodo naložene tukaj -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zadnje dodane epizode izbranega uporabnika -->
+            <div class="latest-episodes-container" id="latestEpisodesContainer">
+                <h2 data-i18n="episodes.latest_episodes">Latest Episodes</h2>
+                <div class="episodes-scrollable">
+                    <div id="latestEpisodesList">
+                        <!-- Zadnje epizode bodo naložene tukaj -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Glavni panel s podcasti -->
+        <div class="main-content">
+            <div class="podcast-section" id="podcastSection">
+                <div id="loadingPodcasts" class="loading">
+                    <p data-i18n="tablet.select_user_message">Select a user to display podcasts</p>
+                </div>
+                
+                <div id="podcastList" class="podcasts-grid">
+                    <!-- Podcasti bodo naloženi tukaj -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Globalne spremenljivke
+        const ingressBase = window.location.pathname.split('/').slice(0, -1).join('/');
+        let selectedUserId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Aplikacija prevodov ob nalaganju strani
+            if (window.i18n) {
+                window.i18n.applyTranslations();
+            }
+    
+            // Napolni izbirnik uporabnikov
+            loadUsers();
+    
+            // Dodaj poslušalca za spremembo uporabnika
+            document.getElementById('userSelect').addEventListener('change', (event) => {
+                const userId = event.target.value;
+                if (userId) {
+                    // Shranimo izbranega uporabnika v localStorage
+                    localStorage.setItem('selectedUserId', userId);
+                    selectUser(userId);
+                } else {
+                    localStorage.removeItem('selectedUserId');
+                    clearPodcastDisplay();
+                }
+            });
+
+    // Preverimo če imamo shranjenega uporabnika
+    const savedUserId = localStorage.getItem('selectedUserId');
+    if (savedUserId) {
+        // Počakamo da se naložijo uporabniki in nato nastavimo izbiro
+        loadUsers().then(() => {
+            const userSelect = document.getElementById('userSelect');
+            userSelect.value = savedUserId;
+            selectUser(savedUserId);
+        });
+    }
+});
+
+        // Funkcija za prikaz obvestila (toast)
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            toast.style.backgroundColor = type === 'error' ? '#dc3545' : '#28a745';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Funkcija za nalaganje uporabnikov v izbirnik
+        async function loadUsers() {
+            try {
+            const response = await fetch(`${ingressBase}/api/users/with_podcasts`);  // Spremenjen URL
+            if (!response.ok) {
+            throw new Error('Error loading users');
+            }
+        
+            const data = await response.json();
+            const userSelect = document.getElementById('userSelect');
+        
+            if (data.users.length === 0) {
+            userSelect.innerHTML = '<option value="" data-i18n="tablet.no_users_with_podcasts">No users with podcasts</option>';
+            return;
+            }
+        
+            userSelect.innerHTML = `<option value="">${window.i18n.t('tablet.select_user_placeholder')}</option>` +
+                data.users.map(user => `
+                    <option value="${user.id}">${user.display_name}</option>
+                `).join('');
+            
+            } catch (error) {
+            showToast('Error loading users: ' + error.message, 'error');
+            }
+        }
+
+        // Funkcija za izbiro uporabnika
+        async function selectUser(userId) {
+            selectedUserId = userId;
+            await loadUserPodcasts(userId);
+            await loadUserLatestEpisodes(userId);
+            await loadUserPausedEpisodes(userId);
+        }
+
+        // Funkcija za čiščenje prikaza
+        function clearPodcastDisplay() {
+            document.getElementById('podcastList').innerHTML = '';
+            document.getElementById('latestEpisodesList').innerHTML = '';
+            document.getElementById('pausedEpisodesList').innerHTML = '';
+            document.getElementById('latestEpisodesContainer').style.display = 'none';
+            document.getElementById('pausedEpisodesContainer').style.display = 'none';
+        }
+
+        // Funkcija za nalaganje podcastov uporabnika
+        async function loadUserPodcasts(userId) {
+            const podcastList = document.getElementById('podcastList');
+            const loadingPodcasts = document.getElementById('loadingPodcasts');
+            
+            try {
+                loadingPodcasts.style.display = 'block';
+                podcastList.innerHTML = '';
+                
+                const response = await fetch(`${ingressBase}/api/users/${userId}/podcasts`);
+                if (!response.ok) {
+                    throw new Error('Error loading podcasts');
+                }
+                
+                const data = await response.json();
+                
+                if (data.podcasts.length === 0) {
+                    podcastList.innerHTML = `
+                        <div class="empty-state">
+                            <p data-i18n="tablet.user_has_no_podcasts">User has no added podcasts.</p>
+                        </div>
+                    `;
+                } else {
+                    podcastList.innerHTML = data.podcasts.map(podcast => `
+                        <div class="podcast-card">
+                            <img src="${podcast.image_url || 'https://via.placeholder.com/150'}" 
+                                alt="${podcast.naslov}"
+                                onerror="this.src='https://via.placeholder.com/150'">
+                            <h3>${podcast.naslov}</h3>
+                            <div class="card-buttons">
+                                <button onclick="goToPodcast(${podcast.id}, ${userId})">
+                                    ${window.i18n.t('navigation.open_podcast')}
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                loadingPodcasts.style.display = 'none';
+            } catch (error) {
+                showToast('Error loading podcasts: ' + error.message, 'error');
+                loadingPodcasts.style.display = 'none';
+            }
+        }
+
+        // Funkcija za nalaganje zadnjih epizod
+        async function loadUserLatestEpisodes(userId) {
+            const latestEpisodesList = document.getElementById('latestEpisodesList');
+            const latestEpisodesContainer = document.getElementById('latestEpisodesContainer');
+            
+            try {
+                latestEpisodesContainer.style.display = 'block';
+                latestEpisodesList.innerHTML = `
+                    <div class="loading">
+                        <p data-i18n="states.loading_episodes">Loading episodes...</p>
+                    </div>
+                `;
+                
+                const response = await fetch(`${ingressBase}/api/users/${userId}/latest_episodes?limit=8`);
+                if (!response.ok) {
+                    throw new Error('Error loading latest episodes');
+                }
+                
+                const episodes = await response.json();
+                
+                if (episodes.length === 0) {
+                    latestEpisodesList.innerHTML = `
+                        <div class="empty-state">
+                            <p data-i18n="episodes.no_episodes">No episodes to display.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                latestEpisodesList.innerHTML = episodes.map(episode => {
+                    const date = new Date(episode.datum_izdaje);
+                    const formattedDate = `${date.getDate()}. ${date.getMonth() + 1}. ${date.getFullYear()}`;
+                    const imageUrl = episode.image_url || 'https://via.placeholder.com/60';
+                    
+                    return `
+                        <div class="episode-item" onclick="goToPodcastEpisode(${episode.podcast_id}, ${episode.id}, ${userId})">
+                            <img class="episode-thumbnail" 
+                                 src="${imageUrl}"
+                                 alt="${episode.podcast_naslov || ''}"
+                                 onerror="this.src='https://via.placeholder.com/60'">
+                            <div class="episode-details">
+                                <div class="episode-title">${episode.naslov || ''}</div>
+                                <div class="episode-podcast-name">${episode.podcast_naslov || ''}</div>
+                                <div class="episode-date">${formattedDate}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                showToast('Error loading latest episodes: ' + error.message, 'error');
+                latestEpisodesList.innerHTML = `
+                    <div class="error-state">
+                        <p>Error loading latest episodes</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Funkcija za nalaganje epizod na pavzi
+        async function loadUserPausedEpisodes(userId) {
+            const pausedEpisodesList = document.getElementById('pausedEpisodesList');
+            const pausedEpisodesContainer = document.getElementById('pausedEpisodesContainer');
+            
+            try {
+                pausedEpisodesContainer.style.display = 'block';
+                pausedEpisodesList.innerHTML = `
+                    <div class="loading">
+                        <p data-i18n="states.loading_episodes">Loading episodes...</p>
+                    </div>
+                `;
+                
+                const response = await fetch(`${ingressBase}/api/episodes/paused?limit=3&as_user=${userId}`);
+                if (!response.ok) {
+                    throw new Error('Error loading paused episodes');
+                }
+                
+                const episodes = await response.json();
+                
+                if (episodes.length === 0) {
+                    pausedEpisodesContainer.style.display = 'none';
+                    return;
+                }
+                
+                pausedEpisodesList.innerHTML = episodes.map(episode => {
+                    const imageUrl = episode.image_url || 'https://via.placeholder.com/60';
+                    const userInfo = episode.user_display_name ? ` (${episode.user_display_name})` : '';
+                    
+                    return `
+                        <div class="episode-item paused-episode" onclick="goToPodcastEpisode(${episode.podcast_id}, ${episode.episode_id}, ${userId})">
+                            <img class="episode-thumbnail" 
+                                 src="${imageUrl}"
+                                 alt="${episode.podcast_naslov || ''}"
+                                 onerror="this.src='https://via.placeholder.com/60'">
+                            <div class="episode-details">
+                                <div class="episode-title">${episode.episode_naslov || ''}${userInfo}</div>
+                                <div class="episode-podcast-name">${episode.podcast_naslov || ''}</div>
+                                <div class="episode-playback-time">⏸️ ${window.i18n.t('episodes.position')} ${episode.playback_time_formatted}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                showToast('Error loading paused episodes: ' + error.message, 'error');
+                pausedEpisodesContainer.style.display = 'none';
+            }
+        }
+
+        // Navigacijske funkcije
+        function goToPodcast(podcastId, userId) {
+            window.location.href = `${ingressBase}/podcast.html?id=${podcastId}&as_user=${userId}&source=tablet`;
+        }
+
+        function goToPodcastEpisode(podcastId, episodeId, userId) {
+            window.location.href = `${ingressBase}/podcast.html?id=${podcastId}&episode=${episodeId}&as_user=${userId}`;
+        }
+
+        function goToSettings() {
+            window.location.href = `${ingressBase}/settings.html`;
+        }
+    </script>
+</body>
+</html>

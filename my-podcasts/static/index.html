@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Podcasts</title>
+    <link rel="stylesheet" href="static/styles.css">
+    <script src="static/lang/i18n.js"></script>
+</head>
+<body>
+    <header>
+        <span data-i18n="header.title">My Podcasts</span>
+        <img src="static/gearicon.png" alt="Settings" class="settings-icon" onclick="goToSettings()">
+    </header>
+
+    <div class="container">
+        <!-- Left panel with form and latest episodes -->
+        <div class="left-panel">
+            <!-- Add Podcast Form -->
+            <div class="form-container">
+                <h2 data-i18n="navigation.add_podcast">Add Podcast</h2>
+                <form id="podcastForm">
+                    <div class="form-group">
+                        <label for="naslov" data-i18n="forms.title_label">Title:</label>
+                        <input type="text" id="naslov" required 
+                               data-i18n-placeholder="forms.title_placeholder"
+                               placeholder="Enter podcast name">
+                    </div>
+                    <div class="form-group">
+                        <label for="rssUrl" data-i18n="forms.rss_url_label">RSS URL:</label>
+                        <input type="text" id="rssUrl" required
+                               data-i18n-placeholder="forms.rss_url_placeholder"
+                               placeholder="Enter RSS URL">
+                    </div>
+                    <!-- Public podcast checkbox -->
+                    <div class="form-group form-checkbox">
+                        <input type="checkbox" id="isPublic" name="isPublic">
+                        <label for="isPublic" data-i18n="forms.public_podcast">Public podcast (visible to all users)</label>
+                    </div>
+                    <button type="submit" data-i18n="forms.submit_add">Add Podcast</button>
+                </form>
+            </div>
+            
+            <!-- Paused Episodes Section -->
+            <div class="paused-episodes-container" id="pausedEpisodesContainer" style="display: none;">
+                <h2 data-i18n="episodes.paused_episodes">Paused Episodes ⏸️</h2>
+                <div class="episodes-scrollable">
+                    <div id="pausedEpisodesList">
+                        <!-- Paused episodes will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest Episodes Section -->
+            <div class="latest-episodes-container">
+                <h2 data-i18n="episodes.latest_episodes">Latest Episodes</h2>
+                <div class="episodes-scrollable">
+                    <div id="latestEpisodesList">
+                    <!-- Latest episodes will be loaded here -->
+                    <div class="loading">
+                        <p data-i18n="states.loading_episodes">Loading episodes...</p>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Podcast List -->
+        <div class="podcast-list">
+            <button class="divider-button" onclick="updateAllPodcasts()" data-i18n="navigation.update_all">
+                Update All Podcasts
+            </button>
+            <div id="podcastList" class="podcasts-grid">
+                <!-- Podcasts will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
