@@ -293,6 +293,28 @@ EOF
         sqlite3 "$DB_PATH" "ALTER TABLE Podcasts ADD COLUMN user_id INTEGER;"
     fi
 
+    # Check if ActiveTrackingSessions table exists
+    HAS_ACTIVE_TRACKING=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ActiveTrackingSessions';")
+    if [ "$HAS_ACTIVE_TRACKING" -eq "0" ]; then
+        echo "Creating ActiveTrackingSessions table..."
+        sqlite3 "$DB_PATH" "CREATE TABLE IF NOT EXISTS ActiveTrackingSessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            episode_id INTEGER NOT NULL,
+            player_entity_id TEXT NOT NULL,
+            episode_url TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            last_position INTEGER DEFAULT -1,
+            same_position_count INTEGER DEFAULT 0,
+            FOREIGN KEY (episode_id) REFERENCES Episodes (id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES Users (id) ON DELETE CASCADE,
+            UNIQUE(episode_id, user_id, player_entity_id)
+        );"
+        echo "ActiveTrackingSessions table created successfully."
+    fi
+
+    echo "Database structure updated."
+
     echo "Database structure updated."
 fi
 
