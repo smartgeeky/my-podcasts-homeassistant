@@ -14,21 +14,25 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 import logging
 
-# Globalni cache za uporabnike
-# Struktura: {'username': {'user_data': {...}, 'timestamp': time.time()}}
+# Global cache for users
+# Structure: {'username': {'user_data': {...}, 'timestamp': time.time()}}
 USER_CACHE = {}
-# Trajanje veljavnosti cache-a v sekundah (1 ura)
-CACHE_EXPIRY = 3600  # 1 ura
+# Cache validity duration in seconds (1 hour)
+CACHE_EXPIRY = 3600  # 1 hour
 
 app = Flask(__name__, static_folder="/app/static")
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)  # Dodana definicija logger-ja
+logger = logging.getLogger(__name__)  # Added logger definition
 
-# Globalna spremenljivka za sledenje niti za posodobitve
+# Global variable for tracking update threads
 update_thread = None
 update_thread_stop_event = threading.Event()
 
-# Funkcija za povezavo z bazo
+# Global variables for tracking playback sessions
+tracking_thread = None
+tracking_thread_stop_event = threading.Event()
+
+# Function for database connection
 def get_db_connection():
     conn = sqlite3.connect('/data/mypodcasts.db', isolation_level=None, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -53,44 +57,44 @@ async def ha_websocket_call(command):
         response = await websocket.recv()
         return json.loads(response)
 
-# Funkcija za pridobivanje informacij o trenutnem uporabniku
+# Function for getting current user
 def get_current_user():
-    """Pridobi trenutnega uporabnika izključno iz glave zahtevka."""
+    """Get the current user exclusively from the request header."""
     try:
-        # Samo preverimo vrednost v X-Remote-User-Name ali X-Remote-User-Display-Name
+        # Just check the value in X-Remote-User-Name or X-Remote-User-Display-Name
         username = request.headers.get('X-Remote-User-Name')
         
         if username:
             logger.debug(f"User obtained from X-Remote-User-Name: {username}")
             return username
             
-        # Poskusimo še z X-Remote-User-Display-Name, če X-Remote-User-Name ni na voljo
+        # Try X-Remote-User-Display-Name if X-Remote-User-Name is not available
         username = request.headers.get('X-Remote-User-Display-Name')
         if username:
             logger.debug(f"User obtained from X-Remote-User-Display-Name: {username}")
             return username
             
-        # Za diagnostične namene izpišimo vse glave samo pri prvem nedefiniranem uporabniku
+        # For diagnostic purposes, print all headers only on the first undefined user
         if 'auth_headers_logged' not in globals():
             globals()['auth_headers_logged'] = True
             logger.debug(f"All headers: {dict(request.headers)}")
         
-        # Če uporabnika nismo pridobili iz glav, uporabimo 'admin' kot privzeto vrednost
+        # If we didn't get the user from headers, use 'admin' as default value
         logger.debug("User not found in request headers, using 'admin'")
         return "admin"
         
     except Exception as e:
         logger.error(f"Error retrieving user: {e}")
-        return "admin"  # Varnostno vračanje privzete vrednosti v primeru napake
+        return "admin"  # Safe return of default value in case of error
     
-# Funkcija za invalidacijo cache-a
+# Function for cache invalidation
 def invalidate_user_cache(username=None):
     """
-    Izbriše cache za določenega uporabnika ali za vse uporabnike.
+    Deletes cache for a specific user or for all users.
     
     Args:
-        username (str, optional): Uporabniško ime za katerega želite izbrisati cache.
-                                  Če je None, se izbriše cache za vse uporabnike.
+        username (str, optional): Username for which to delete the cache.
+                                  If None, cache is deleted for all users.
     """
     global USER_CACHE
     if username:
@@ -101,10 +105,10 @@ def invalidate_user_cache(username=None):
         USER_CACHE = {}
         logger.debug("Cache for all users has been cleared")
 
-# API za upravljanje s cache-om
+# API for cache management
 @app.route('/api/cache/status', methods=['GET'])
 def cache_status():
-    """Prikaže stanje cache-a uporabnikov"""
+    """Shows the status of user cache"""
     result = {
         'user_count': len(USER_CACHE),
         'users': []
@@ -124,7 +128,7 @@ def cache_status():
 
 @app.route('/api/cache/clear', methods=['POST'])
 def clear_cache():
-    """Izbriše cache za vse ali določene uporabnike"""
+    """Deletes cache for all or specific users"""
     data = request.json or {}
     username = data.get('username')
     
@@ -134,17 +138,17 @@ def clear_cache():
         'message': f"Cache {'za uporabnika ' + username if username else 'za vse uporabnike'} je bil uspešno izbrisan."
     })
 
-# Funkcija za preverjanje in ustvarjanje uporabnika v bazi
+# Function for checking and creating user in database
 def get_user_from_db(username):
-    """Preveri, ali uporabnik obstaja, in ga ustvari, če ne obstaja"""
+    """Checks if user exists and creates them if they don't exist"""
     if not username:
         logger.error("Empty username!")
         return None
     
-    # Preveri cache
+    # Check cache
     if username in USER_CACHE:
         cache_entry = USER_CACHE[username]
-        # Preveri, ali je cache še veljaven
+        # Check if cache is still valid
         if time.time() - cache_entry['timestamp'] < CACHE_EXPIRY:
             return cache_entry['user_data']
     
@@ -153,7 +157,7 @@ def get_user_from_db(username):
     try:
         conn = get_db_connection()
         
-        # Najprej preverimo, ali tabela Users obstaja, če ne, jo ustvarimo
+        # First check if Users table exists, if not, create it
         conn.execute("""
         CREATE TABLE IF NOT EXISTS Users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,7 +170,7 @@ def get_user_from_db(username):
         """)
         conn.commit()
         
-        # Preverimo, ali uporabnik že obstaja
+        # Check if user already exists
         user = conn.execute(
             "SELECT * FROM Users WHERE username = ?", 
             (username,)
@@ -175,7 +179,7 @@ def get_user_from_db(username):
         if user:
             logger.debug(f"User {username} already exists in database (ID: {user['id']})")
             user_dict = dict(user)
-            # Shrani v cache
+            # Save to cache
             USER_CACHE[username] = {
                 'user_data': user_dict,
                 'timestamp': time.time()
@@ -183,34 +187,34 @@ def get_user_from_db(username):
             conn.close()
             return user_dict
         
-        # Če uporabnik ne obstaja, ga ustvarimo
+        # If user doesn't exist, create it
         display_name = username
         
         logger.info(f"Creating new user: {username}")
         
-        # Nastavimo admin privilegije na 1, če je uporabnik "admin" ali "A" ali če je to prvi uporabnik
+        # Set admin privileges to 1 if user is "admin" or "A" or if this is the first user
         is_admin = False
         if username.lower() == "admin" or username == "A":
             is_admin = True
             logger.info(f"Assigning admin privileges to user: {username}")
         else:
-            # Preverimo, ali je to prvi uporabnik
+            # Check if this is the first user
             first_user = conn.execute("SELECT COUNT(*) as count FROM Users").fetchone()
             if first_user['count'] == 0:
                 is_admin = True
                 logger.info(f"Assigning admin privileges to first user: {username}")
         
-        # POPRAVLJENO: pravilno število parametrov v SQL stavku
+        # FIXED: correct number of parameters in SQL statement
         conn.execute(
             """
             INSERT INTO Users (username, display_name, is_admin, is_tab_user, created_at)
             VALUES (?, ?, ?, ?, datetime('now'))
             """,
-            (username, display_name, 1 if is_admin else 0, 0)  # is_tab_user je vedno nastavljen na 0 za nove uporabnike
+            (username, display_name, 1 if is_admin else 0, 0)  # is_tab_user is always set to 0 for new users
         )
         conn.commit()
         
-        # Pridobimo ustvarjenega uporabnika
+        # Get the created user
         user = conn.execute(
             "SELECT * FROM Users WHERE username = ?", 
             (username,)
@@ -220,7 +224,7 @@ def get_user_from_db(username):
         if user:
             logger.info(f"User successfully added to database: {username} (ID: {user['id']})")
             user_dict = dict(user)
-            # Shrani v cache
+            # Save to cache
             USER_CACHE[username] = {
                 'user_data': user_dict,
                 'timestamp': time.time()
@@ -235,56 +239,56 @@ def get_user_from_db(username):
             conn.close()
         return None
 
-# API za dodajanje ali posodabljanje redirekcije na tablet.html
+# API for adding or updating redirection to tablet.html
 @app.route('/', methods=['GET'])
 def serve_index():
-    # Preveri, ali je uporabnik tab uporabnik
+    # Check if user is a tab user
     username = get_current_user()
     user = get_user_from_db(username)
     
     if not user:
         return send_from_directory('/app/static', 'index.html')
     
-    # Če je uporabnik tab uporabnik, ga preusmeri na tablet.html
+    # If user is a tab user, redirect to tablet.html
     if user['is_tab_user'] == 1:
         return send_from_directory('/app/static', 'tablet.html')
     
-    # Sicer prikaži običajno index.html
+    # Otherwise show regular index.html
     return send_from_directory('/app/static', 'index.html')
 
-# Postrezi podcast.html
+# Serve podcast.html
 @app.route('/podcast.html')
 def serve_podcast():
     return send_from_directory('/app/static', 'podcast.html')
 
-# Postrezi script.js
+# Serve script.js
 @app.route('/script.js')
 def serve_script():
     return send_from_directory('/app/static', 'script.js')
 
-# Postrezi settings.html
+# Serve settings.html
 @app.route('/settings.html')
 def serve_settings():
     return send_from_directory('/app/static', 'settings.html')
 
-# Postrezi tablet.html
+# Serve tablet.html
 @app.route('/tablet.html')
 def serve_tablet():
     return send_from_directory('/app/static', 'tablet.html')
 
-# Statične datoteke
+# Static files
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory('/app/static', filename)
 
-# API za pridobivanje vseh podcastov
+# API for retrieving all podcasts
 @app.route('/api/podcasts', methods=['GET'])
 def get_podcasts():
     username = get_current_user()
     user = get_user_from_db(username)
 
     if not user:
-        return jsonify({"error": "Uporabnik ni registriran v sistemu."}), 401
+        return jsonify({"error": "User is not registered in the system."}), 401
 
     conn = get_db_connection()
     
@@ -297,7 +301,7 @@ def get_podcasts():
         """).fetchall()
     else:
         logger.info(f"Retrieving podcasts for user {user['username']} (ID: {user['id']}).")
-        # Dodano upoštevanje skritih podcastov
+        # Added consideration for hidden podcasts
         podcasts = conn.execute("""
             SELECT p.*, u.display_name as user_display_name
             FROM Podcasts p
@@ -311,7 +315,7 @@ def get_podcasts():
     logger.info(f"{len(podcasts)} podcasts found for user {user['username']}.")
     return jsonify([dict(podcast) for podcast in podcasts])
 
-# Funkcija za pridobitev opisa iz RSS vira
+# Function for getting description from RSS feed
 def get_podcast_description(rss_url):
     feed = feedparser.parse(rss_url)
     if feed.bozo:
@@ -324,7 +328,7 @@ def get_podcast_description(rss_url):
         return feed.feed.subtitle
     return None
 
-# Funkcija za pridobitev slike iz RSS vira
+# Function for getting image from RSS feed
 def get_podcast_image(rss_url):
     feed = feedparser.parse(rss_url)
     if feed.bozo:
@@ -337,19 +341,19 @@ def get_podcast_image(rss_url):
         return feed.feed.logo
     return None
 
-# API za dodajanje podcasta
+# API for adding podcast
 @app.route('/api/podcasts', methods=['POST'])
 def add_podcast():
     data = request.json
     naslov = data.get('naslov')
     rss_url = data.get('rss_url')
-    is_public = data.get('is_public', 0)  # Privzeto je podcast zaseben (0)
+    is_public = data.get('is_public', 0)  # Default podcast is private (0)
 
     if not naslov or not rss_url:
         logger.error("Error: Title and RSS URL are required.")
         return jsonify({"error": "Naslov in RSS URL sta obvezna."}), 400
 
-    # Pridobimo trenutnega uporabnika
+    # Get the current user
     username = get_current_user()
     user = get_user_from_db(username)
 
@@ -382,7 +386,7 @@ def add_podcast():
     logger.info(f"Podcast {naslov} successfully added for user {user['username']}.")
     return jsonify({"message": "Podcast dodan uspešno."}), 201
 
-# API za preverjanje uporabe podcasta pred brisanjem
+# API for checking podcast usage before deletion
 @app.route('/api/podcasts/<int:podcast_id>/check_usage', methods=['GET'])
 def check_podcast_usage(podcast_id):
     try:
@@ -390,33 +394,33 @@ def check_podcast_usage(podcast_id):
         user = get_user_from_db(username)
         
         if not user:
-            return jsonify({"error": "Uporabnik ni registriran v sistemu."}), 401
+            return jsonify({"error": "User is not registered in the system."}), 401
         
         with get_db_connection() as conn:
-            # Preveri, ali podcast obstaja
+            # Check if podcast exists
             podcast = conn.execute("SELECT * FROM Podcasts WHERE id = ?", (podcast_id,)).fetchone()
             if not podcast:
                 return jsonify({"error": "Podcast ne obstaja."}), 404
             
-            # Preveri, ali je uporabnik lastnik ali admin
+            # Check if user is owner or admin
             if podcast['user_id'] != user['id'] and not user['is_admin']:
                 return jsonify({"error": "Nimate pravice za brisanje tega podcasta."}), 403
             
-            # Če ni javen, lahko se direktno briše
+           # If not public, can be deleted directly
             if not podcast['is_public']:
                 return jsonify({
                     "can_delete": True,
                     "reason": "private_podcast"
                 })
             
-            # Če je admin, lahko briše vse
+            # If admin, can delete everything
             if user['is_admin']:
                 return jsonify({
                     "can_delete": True,
                     "reason": "admin_user"
                 })
             
-            # Preveri uporabo javnega podcasta
+            # Check usage of public podcast
             usage_check = conn.execute("""
                 SELECT 
                     COUNT(DISTINCT CASE 
@@ -437,7 +441,7 @@ def check_podcast_usage(podcast_id):
             visible_users = usage_check['visible_users'] or 0
             hidden_with_history = usage_check['hidden_with_history'] or 0
             
-            # Logika odločanja
+            # Decision logic
             if hidden_with_history > 0:
                 return jsonify({
                     "can_delete": False,
@@ -461,7 +465,7 @@ def check_podcast_usage(podcast_id):
         logger.error(f"Error checking podcast usage: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za brisanje podcasta
+# API for deleting podcast
 @app.route('/api/podcasts/<int:podcast_id>', methods=['DELETE'])
 def delete_podcast(podcast_id):
     with get_db_connection() as conn:
@@ -475,7 +479,7 @@ def delete_podcast(podcast_id):
         conn.commit()
     return jsonify({"message": "Podcast in njegove epizode so uspešno izbrisane."}), 200
 
-# API za posodobitev vseh podcastov
+# API for updating all podcasts
 @app.route('/api/podcasts/update_all', methods=['POST'])
 def update_all_podcasts():
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -487,32 +491,32 @@ def update_all_podcasts():
         conn.commit()
     return jsonify({"message": "Vsi podcasti so bili posodobljeni."}), 200
 
-# Dodaj funkcionalnost za označevanje epizod kot poslušanih
+# Add functionality for marking episodes as listened
 @app.route('/api/episodes/mark_listened/<int:episode_id>', methods=['POST'])
 def mark_episode_listened(episode_id):
-    # Pridobi trenutnega uporabnika
+    # Get current user
     username = get_current_user()
     user = get_user_from_db(username)
     
     if not user:
-        return jsonify({"error": "Uporabnik ni registriran v sistemu."}), 401
+        return jsonify({"error": "User is not registered in the system."}), 401
     
-    # Preveri parametre zahtevka
+    # Check request parameters
     data = request.json or {}
     as_user_id = data.get('as_user_id')
     
-    # Preveri, ali je trenutni uporabnik tab uporabnik in ali ima pravico označevati poslušanost
+    # Check if current user is tab user and has permission to mark listening status
     with get_db_connection() as conn:
-        # Najprej preverimo, ali epizoda obstaja
+        # First check if episode exists
         episode = conn.execute("SELECT * FROM Episodes WHERE id = ?", (episode_id,)).fetchone()
         
         if not episode:
             return jsonify({"error": "Epizoda ne obstaja."}), 404
             
-        # Določi uporabnika, za katerega beležimo poslušanost
+        # Determine the user for whom we record listening status
         target_user_id = None
         if as_user_id:
-            # Če je trenutni uporabnik tab uporabnik, mu dovolimo uporabo as_user_id
+            # If current user is tab user, allow them to use as_user_id
             if user['is_tab_user'] == 1:
                 target_user_id = as_user_id
             else:
@@ -520,21 +524,21 @@ def mark_episode_listened(episode_id):
         else:
             target_user_id = user['id']
         
-        # Preverimo, ali že obstaja zapis o poslušanju za tega uporabnika
+        # Check if listening record already exists for this user
         listen_status = conn.execute("""
             SELECT * FROM EpisodeListenStatus
             WHERE episode_id = ? AND user_id = ?
         """, (episode_id, target_user_id)).fetchone()
         
         if listen_status:
-            # Posodobi obstoječi zapis
+            # Update existing record
             conn.execute("""
                 UPDATE EpisodeListenStatus
                 SET poslušano = 1, timestamp = datetime('now')
                 WHERE episode_id = ? AND user_id = ?
             """, (episode_id, target_user_id))
         else:
-            # Ustvari nov zapis
+            # Create new record
             conn.execute("""
                 INSERT INTO EpisodeListenStatus (episode_id, user_id, poslušano)
                 VALUES (?, ?, 1)
@@ -547,22 +551,22 @@ def mark_episode_listened(episode_id):
     return jsonify({"message": "Epizoda označena kot poslušana."}), 200
 
 
-# API za pridobivanje epizod
+# API for retrieving episodes
 @app.route('/api/episodes/<int:podcast_id>', methods=['GET'])
 def get_episodes(podcast_id):
-    # Pridobi trenutnega uporabnika
+    # Get current user
     username = get_current_user()
     user = get_user_from_db(username)
     
     if not user:
-        return jsonify({"error": "Uporabnik ni registriran v sistemu."}), 401
+        return jsonify({"error": "User is not registered in the system."}), 401
     
-    # Preveri parametre zahtevka (za primer, ko se gleda kot drug uporabnik)
+    # Check request parameters (for case when viewing as another user)
     as_user_id = request.args.get('as_user', type=int)
     check_user_id = as_user_id if as_user_id else user['id']
     
     with get_db_connection() as conn:
-        # Pridobi epizode s stanjem poslušanja in pozicijo predvajanja za ustreznega uporabnika
+        # Get episodes with listening status and playback position for the appropriate user
         episodes = conn.execute("""
             SELECT 
                 e.*,
@@ -577,13 +581,13 @@ def get_episodes(podcast_id):
         """, (check_user_id, check_user_id, podcast_id)).fetchall()
     
     if not episodes:
-        return jsonify([])  # Vrnemo prazen seznam namesto napake
+        return jsonify([])  # Return empty list instead of error
     
-    # Pretvorimo rezultate v seznam slovarjev in dodamo informacije o predvajanju
+    # Convert results to list of dictionaries and add playback information
     result = []
     for episode in episodes:
         episode_dict = dict(episode)
-        # Dodamo formatiran čas predvajanja (za lažji prikaz v uporabniškem vmesniku)
+        # Add formatted playback time (for easier display in user interface)
         if episode_dict['playback_position'] > 0:
             minutes = episode_dict['playback_position'] // 60
             seconds = episode_dict['playback_position'] % 60
@@ -594,20 +598,20 @@ def get_episodes(podcast_id):
     
     return jsonify(result)
 
-# API za brisanje posamezne epizode
+# API for deleting a single episode
 @app.route('/api/episodes/<int:episode_id>/delete', methods=['POST'])
 def delete_episode(episode_id):
     """Izbriši posamezno epizodo"""
     try:
-        # Pridobi trenutnega uporabnika
+        # Get current user
         username = get_current_user()
         user = get_user_from_db(username)
         
         if not user:
-            return jsonify({"error": "Uporabnik ni registriran v sistemu."}), 401
+            return jsonify({"error": "User is not registered in the system."}), 401
         
         with get_db_connection() as conn:
-            # Preveri, ali epizoda obstaja in pridobi podatke o podcasu
+            # Check if episode exists and get podcast data
             episode = conn.execute("""
                 SELECT e.*, p.user_id as podcast_owner_id
                 FROM Episodes e
@@ -618,19 +622,19 @@ def delete_episode(episode_id):
             if not episode:
                 return jsonify({"error": "Epizoda ne obstaja."}), 404
             
-            # Preveri, ali ima uporabnik pravico brisati epizodo
-            # Pravico ima lastnik podcasta ali admin
+            # Check if user has permission to delete episode
+            # Podcast owner or admin has permission
             if episode['podcast_owner_id'] != user['id'] and not user['is_admin']:
                 return jsonify({"error": "Nimate pravice brisati te epizode."}), 403
             
-            # Označi epizodo kot izbrisano (soft delete)
+            # Mark episode as deleted (soft delete)
             conn.execute("""
                 UPDATE Episodes 
                 SET izbrisano = 1 
                 WHERE id = ?
             """, (episode_id,))
             
-            # Izbriši tudi povezane podatke o poslušanju in poziciji predvajanja
+            # Also delete related listening and playback position data
             conn.execute("DELETE FROM EpisodeListenStatus WHERE episode_id = ?", (episode_id,))
             conn.execute("DELETE FROM EpisodePlaybackPosition WHERE episode_id = ?", (episode_id,))
             
@@ -643,7 +647,7 @@ def delete_episode(episode_id):
         logger.error(f"Error deleting episode: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Funkcija za posodobitev epizod iz RSS vira
+# Function for updating episodes from RSS feed
 def update_episodes(podcast_id, rss_url):
     logger.info(f"Updating podcast ID {podcast_id} from source {rss_url}")
     feed = feedparser.parse(rss_url)
@@ -652,7 +656,7 @@ def update_episodes(podcast_id, rss_url):
         return
 
     with get_db_connection() as conn:
-        # Pridobi URL slike in opis podcasta ter posodobi
+        # Get podcast image URL and description and update
         image_url = get_podcast_image(rss_url)
         description = get_podcast_description(rss_url)
         if image_url or description:
@@ -666,7 +670,7 @@ def update_episodes(podcast_id, rss_url):
         for entry in feed.entries:
             naslov = entry.title
             datum_izdaje = entry.published if hasattr(entry, 'published') else datetime.now().isoformat()
-            # Formatiranje datuma
+            # Date formatting
             try:
                 parsed_date = datetime.strptime(datum_izdaje, "%a, %d %b %Y %H:%M:%S %z")
                 datum_izdaje_iso = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -679,23 +683,23 @@ def update_episodes(podcast_id, rss_url):
                 logger.info(f"Missing URL for episode: {naslov}")
                 continue
 
-            # Dodamo preverjanje za opis epizode
+            # Add check for episode description
             opis = ""
             if hasattr(entry, 'summary'):
                 opis = entry.summary
             elif hasattr(entry, 'description'):
                 opis = entry.description
 
-            # Preveri, ali epizoda že obstaja in pridobi njen ID in trenutni opis
+            # Check if episode already exists and get its ID and current description
             obstojece = conn.execute(
                 "SELECT id, opis FROM Episodes WHERE podcast_id = ? AND naslov = ? AND datum_izdaje = ? AND izbrisano IS NOT 1",
                 (podcast_id, naslov, datum_izdaje_iso)
             ).fetchone()
 
             if obstojece:
-                # Pridobi trenutni opis iz baze
+                # Get current description from database
                 obstojeciOpis = obstojece['opis'] if obstojece['opis'] is not None else ""
-                # Če je nov opis drugačen in ni prazen, posodobi zapis
+                # If new description is different and not empty, update record
                 if opis and opis != obstojeciOpis:
                     conn.execute(
                         "UPDATE Episodes SET opis = ? WHERE id = ?",
@@ -715,14 +719,14 @@ def update_episodes(podcast_id, rss_url):
         conn.commit()
     logger.info(f"Update for podcast ID {podcast_id} completed")
 
-# Funkcija za izluščenje vseh epizod iz HTML arhiva podanega URL-ja
+# Function for extracting all episodes from HTML archive of given URL
 def scrape_all_episodes_from_html_url(html_url):
     r = requests.get(html_url)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, 'html.parser')
 
     episodes_data = []
-    # Prilagodite selektorje glede na dejansko HTML strukturo strani
+    # Adjust selectors according to actual HTML structure of the page
     epizode = soup.select('.podcast-episode')
     for ep in epizode:
         naslov_el = ep.find('h3')
@@ -750,7 +754,7 @@ def scrape_all_episodes_from_html_url(html_url):
 
     return episodes_data
 
-# Endpoint za enkraten uvoz manjkajočih epizod iz poljubnega HTML URL
+# Endpoint for one-time import of missing episodes from arbitrary HTML URL
 @app.route('/api/podcasts/<int:podcast_id>/add_missing_from_html_url', methods=['POST'])
 def add_missing_from_html_url(podcast_id):
     data = request.json
@@ -893,7 +897,35 @@ async def play_episode():
         return jsonify({"error": "Missing required parameters"}), 400
 
     try:
-        # Najprej začnemo predvajanje
+        # Get current user for tracking
+        username = get_current_user()
+        user = get_user_from_db(username)
+        if not user:
+            return jsonify({"error": "User not found"}), 401
+
+        # Get episode_id from URL and check for saved position
+        episode_id = None
+        saved_position = 0
+        with get_db_connection() as conn:
+            episode = conn.execute("SELECT id FROM Episodes WHERE url = ?", (episode_url,)).fetchone()
+            if episode:
+                episode_id = episode['id']
+                
+                # Check for saved position if start_position not provided
+                if start_position == 0:
+                    position_data = conn.execute("""
+                        SELECT position FROM EpisodePlaybackPosition 
+                        WHERE episode_id = ? AND user_id = ?
+                    """, (episode_id, user['id'])).fetchone()
+                    
+                    if position_data and position_data['position'] > 0:
+                        saved_position = position_data['position']
+                        logger.info(f"Found saved position {saved_position} for episode {episode_id}")
+
+        # Use saved position if no start_position was provided
+        final_start_position = start_position if start_position > 0 else saved_position
+
+        # First start playback
         play_command = {
             "type": "call_service",
             "domain": "media_player",
@@ -910,35 +942,83 @@ async def play_episode():
         }
         await ha_websocket_call(play_command)
 
-        # Če imamo začetno pozicijo, počakamo daljši čas in pošljemo seek ukaz
-        if start_position > 0:
-            # Počakamo 5 sekund, da se medij popolnoma naloži
-            await asyncio.sleep(5)
+        # Start tracking session if we found episode_id
+        if episode_id:
+            start_tracking_session(episode_id, player_entity_id, episode_url, user['id'])
+
+        # If we have a position to seek to, use improved seeking logic
+        if final_start_position > 0:
+            seek_success = await smart_seek_to_position(player_entity_id, final_start_position)
             
-            seek_command = {
-                "type": "call_service",
-                "domain": "media_player",
-                "service": "media_seek",
-                "service_data": {
-                    "entity_id": player_entity_id,
-                    "seek_position": start_position
-                },
-                "id": 3
-            }
-            
-            try:
-                await ha_websocket_call(seek_command)
-                minutes = start_position // 60
-                seconds = start_position % 60
+            if seek_success:
+                minutes = final_start_position // 60
+                seconds = final_start_position % 60
                 return jsonify({"message": f"Predvajam epizodo od pozicije {minutes}:{seconds:02d}"})
-            except Exception as seek_error:
-                logger.error(f"Error seeking to position {start_position}: {str(seek_error)}")
+            else:
                 return jsonify({"message": "Predvajam epizodo (pozicija ni bila nastavljena)"})
         
         return jsonify({"message": "Predvajam epizodo"})
     except Exception as e:
         logger.error(f"Error in play_episode: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+async def smart_seek_to_position(player_entity_id, seek_position, max_attempts=10):
+    """
+    Pametno iskanje pozicije - čaka da se media naloži pred seek operacijo
+    """
+    try:
+        logger.info(f"Starting smart seek to position {seek_position} for player {player_entity_id}")
+        
+        # Počakaj da se predvajanje začne in media naloži
+        for attempt in range(max_attempts):
+            await asyncio.sleep(1)  # Počakaj 1 sekundo med poskusi
+            
+            # Preveri stanje predvajalnika
+            player_state = await get_player_state_from_ha(player_entity_id)
+            
+            if not player_state:
+                logger.warning(f"Could not get player state, attempt {attempt + 1}")
+                continue
+                
+            state = player_state.get('state', 'unknown')
+            duration = player_state.get('media_duration', 0)
+            current_position = player_state.get('media_position', 0)
+            
+            logger.info(f"Attempt {attempt + 1}: state={state}, duration={duration}, position={current_position}")
+            
+            # Preverimo ali je media pripravljena
+            if state in ['playing', 'paused'] and duration > 0:
+                # Media je pripravljena, lahko izvršimo seek
+                logger.info(f"Media ready after {attempt + 1} attempts, executing seek to {seek_position}")
+                
+                seek_command = {
+                    "type": "call_service",
+                    "domain": "media_player",
+                    "service": "media_seek",
+                    "service_data": {
+                        "entity_id": player_entity_id,
+                        "seek_position": seek_position
+                    },
+                    "id": 3
+                }
+                
+                await ha_websocket_call(seek_command)
+                
+                # Počakaj malo in preveri ali je seek uspešen
+                await asyncio.sleep(2)
+                final_state = await get_player_state_from_ha(player_entity_id)
+                if final_state:
+                    final_position = final_state.get('media_position', 0)
+                    logger.info(f"Seek completed, final position: {final_position}")
+                
+                return True
+                
+        logger.error(f"Failed to seek after {max_attempts} attempts")
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error in smart_seek_to_position: {e}")
+        return False
 
 @app.route('/api/podcasts/<int:podcast_id>/add_missing_episodes', methods=['POST'])
 def add_missing_episodes(podcast_id):
@@ -1013,7 +1093,7 @@ def add_missing_episodes(podcast_id):
                 logger.error(f"Error during rollback: {rollback_error}")
         return jsonify({"error": str(e)}), 500
 
-# API za inicializacijo uporabnika ob prvem dostopu do aplikacije
+# API for user initialization on first application access
 @app.route('/api/init_user', methods=['GET'])
 def init_user():
     """API za preverjanje uporabnika ob prvem dostopu do aplikacije"""
@@ -1040,13 +1120,13 @@ def init_user():
         logger.error(f"Napaka v init_user: {e}", exc_info=True)
         return jsonify({"error": f"Napaka: {str(e)}"}), 500
 
-# API za pridobivanje nastavitev
+# API for getting settings
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     with get_db_connection() as conn:
         settings = conn.execute("SELECT * FROM Settings LIMIT 1").fetchone()
         if not settings:
-            # Če nastavitve ne obstajajo, ustvari privzete
+            # If settings don't exist, create defaults
             current_time = datetime.now().strftime("%H:%M")
             conn.execute("""
                 INSERT INTO Settings (avtomatsko, interval, cas_posodobitve, zadnja_posodobitev)
@@ -1056,7 +1136,7 @@ def get_settings():
             settings = conn.execute("SELECT * FROM Settings LIMIT 1").fetchone()
     return jsonify(dict(settings))
 
-# API za posodabljanje nastavitev
+# API for updating settings
 @app.route('/api/settings', methods=['POST'])
 def update_settings():
     data = request.json
@@ -1065,21 +1145,21 @@ def update_settings():
     cas_posodobitve = data.get('cas_posodobitve', '03:00')
 
     with get_db_connection() as conn:
-        # Preveri stare nastavitve za primerjavo
+        # Check old settings for comparison
         old_settings = conn.execute("SELECT avtomatsko FROM Settings LIMIT 1").fetchone()
         old_avtomatsko = old_settings['avtomatsko'] if old_settings else 0
 
-        # Preveri, če nastavitve obstajajo
+        # Check if settings exist
         settings = conn.execute("SELECT 1 FROM Settings LIMIT 1").fetchone()
         if settings:
-            # Posodobi obstoječe nastavitve
+            # Update existing settings
             conn.execute("""
                 UPDATE Settings
                 SET avtomatsko = ?, interval = ?, cas_posodobitve = ?
                 WHERE id = 1
             """, (avtomatsko, interval, cas_posodobitve))
         else:
-            # Ustvari nove nastavitve
+            # Create new settings
             conn.execute("""
                 INSERT INTO Settings (avtomatsko, interval, cas_posodobitve, zadnja_posodobitev)
                 VALUES (?, ?, ?, datetime('now'))
@@ -1088,61 +1168,61 @@ def update_settings():
     
     logger.info(f"Settings updated: automatic={avtomatsko}, interval={interval}, update_time={cas_posodobitve}")
     
-    # Če smo vklopili avtomatsko posodobitev ali spremenili avtomatsko posodobitev,
-    # ponovno zaženemo nit za posodobitve
+    # If we enabled automatic update or changed automatic update,
+    # restart the update thread
     if avtomatsko == 1 or old_avtomatsko != avtomatsko:
         logger.info("Restarting update thread due to settings change")
         start_update_thread()
     
     return jsonify({"message": "Nastavitve uspešno posodobljene."})
 
-# Funkcija za izračun sekund do naslednje posodobitve
+# Function to calculate seconds until next update
 def calculate_seconds_until_next_update():
     try:
         with get_db_connection() as conn:
             settings = conn.execute("SELECT * FROM Settings LIMIT 1").fetchone()
         
         if not settings or settings['avtomatsko'] != 1 or not settings['cas_posodobitve']:
-            # Če avtomatska posodobitev ni nastavljena, preveri spet čez eno uro
+            # If automatic update is not set, check again in one hour
             return 3600  
         
-        # Pridobi trenutni čas
+        # Get current time
         now = datetime.now()
         
-        # Razčleni nastavljen čas posodobitve
+        # Parse set update time
         hour, minute = map(int, settings['cas_posodobitve'].split(':'))
         
-        # Ustvari datetime objekt za naslednji čas posodobitve
+        # Create datetime object for next update time
         next_update = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         
-        # Če je nastavljen čas že mimo za danes, dodaj en dan ali en teden
+        # If set time is already past for today, add one day or one week
         if next_update <= now:
-            if settings['interval'] <= 24:  # Dnevna posodobitev
+            if settings['interval'] <= 24:  # Daily update
                 next_update += timedelta(days=1)
-            else:  # Tedenska posodobitev
+            else:  # Weekly update
                 next_update += timedelta(days=7)
-        # Pri tedenski posodobitvi lahko dodatno preverimo, ali moramo preskočiti več dni
+        # For weekly update, we can additionally check if we need to skip more days
         elif settings['interval'] > 24 and 'zadnja_posodobitev' in settings and settings['zadnja_posodobitev']:
             last_update = datetime.strptime(settings['zadnja_posodobitev'], "%Y-%m-%d %H:%M:%S")
             hours_since_last_update = (now - last_update).total_seconds() / 3600
             
-            # Če ni minilo dovolj časa od zadnje posodobitve, preskočimo na naslednji teden
+            # If not enough time has passed since last update, skip to next week
             if hours_since_last_update < settings['interval'] and next_update > last_update:
                 next_update += timedelta(days=7)
         
-        # Izračunaj sekunde do naslednje posodobitve
+        # Calculate seconds until next update
         seconds_until_update = (next_update - now).total_seconds()
         
         logger.info(f"Next update at {next_update.strftime('%Y-%m-%d %H:%M:%S')} (over {seconds_until_update/3600:.2f} hours)")
-        return max(seconds_until_update, 60)  # Najmanj 1 minuta
+        return max(seconds_until_update, 60)  # At least 1 minute
     except Exception as e:
         logger.error(f"Error calculating time for next update: {e}", exc_info=True)
         import traceback
         traceback.print_exc()
-        # V primeru napake preveri ponovno čez 1 uro
+        # In case of error, check again in 1 hour
         return 3600
     
-# API za shranjevanje pozicije predvajanja
+# API for saving playback position
 @app.route('/api/episodes/<int:episode_id>/position', methods=['POST'])
 def save_episode_position(episode_id):
     """Shrani trenutno pozicijo predvajanja za epizodo"""
@@ -1153,14 +1233,14 @@ def save_episode_position(episode_id):
         if position is None:
             return jsonify({"error": "Manjka parameter 'position'"}), 400
 
-        # Pridobi trenutnega uporabnika
+        # Get current user
         username = get_current_user()
         current_user = get_user_from_db(username)
         
         if not current_user:
             return jsonify({"error": "Napaka pri preverjanju uporabnika."}), 500
 
-        # Preveri as_user parameter
+        # Check as_user parameter
         as_user_id = data.get('as_user_id')
         target_user_id = None
 
@@ -1173,12 +1253,12 @@ def save_episode_position(episode_id):
             target_user_id = current_user['id']
 
         with get_db_connection() as conn:
-            # Preveri ali epizoda obstaja
+            # Check if episode exists
             episode = conn.execute("SELECT * FROM Episodes WHERE id = ?", (episode_id,)).fetchone()
             if not episode:
                 return jsonify({"error": "Epizoda ne obstaja."}), 404
 
-            # Shrani ali posodobi pozicijo
+            # Save or update position
             conn.execute("""
                 INSERT INTO EpisodePlaybackPosition (episode_id, user_id, position, timestamp)
                 VALUES (?, ?, ?, datetime('now'))
@@ -1194,19 +1274,19 @@ def save_episode_position(episode_id):
         logger.error(f"Napaka pri shranjevanju pozicije: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za pridobivanje pozicije predvajanja
+# API for getting playback position
 @app.route('/api/episodes/<int:episode_id>/position', methods=['GET'])
 def get_episode_position(episode_id):
     """Pridobi zadnjo shranjeno pozicijo predvajanja za epizodo"""
     try:
-        # Pridobi trenutnega uporabnika
+        # Get current user
         username = get_current_user()
         current_user = get_user_from_db(username)
         
         if not current_user:
             return jsonify({"error": "Napaka pri preverjanju uporabnika."}), 500
 
-        # Preveri as_user parameter iz URL
+        # Check as_user parameter from URL
         as_user_id = request.args.get('as_user', type=int)
         target_user_id = None
 
@@ -1219,12 +1299,12 @@ def get_episode_position(episode_id):
             target_user_id = current_user['id']
 
         with get_db_connection() as conn:
-            # Preveri ali epizoda obstaja
+            # Check if episode exists
             episode = conn.execute("SELECT * FROM Episodes WHERE id = ?", (episode_id,)).fetchone()
             if not episode:
                 return jsonify({"error": "Epizoda ne obstaja."}), 404
 
-            # Pridobi zadnjo pozicijo
+            # Get last position
             position = conn.execute("""
                 SELECT position, timestamp
                 FROM EpisodePlaybackPosition
@@ -1246,11 +1326,11 @@ def get_episode_position(episode_id):
         logger.error(f"Napaka pri pridobivanju pozicije: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Funkcija za posodobitev avtomatsko
+# Function for automatic update
 def auto_update_podcasts():
     try:
         logger.info("Starting automatic podcast update...")
-        # Posodobi vse podcaste
+        # Update all podcasts
         with get_db_connection() as conn:
             podcasts = conn.execute("SELECT * FROM Podcasts").fetchall()
             updated = 0
@@ -1262,7 +1342,7 @@ def auto_update_podcasts():
                 except Exception as e:
                     logger.error(f"Napaka pri posodabljanju podcasta {podcast['naslov']}: {e}")
             
-            # Posodobi čas zadnje posodobitve
+            # Update last update time
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             conn.execute("UPDATE Settings SET zadnja_posodobitev = ? WHERE id = 1", (now,))
             conn.commit()
@@ -1272,22 +1352,22 @@ def auto_update_podcasts():
         logger.error(f"Error while auto-updating podcasts: {e}")
         return False
 
-# Funkcija za avtomatsko posodobitev
+# Function for automatic update
 def auto_update_loop():
     logger.info("Automatic update initialized.")
     while not update_thread_stop_event.is_set():
         try:
-            # Izračunaj čas do naslednje posodobitve
+            # Calculate time until next update
             sleep_duration = calculate_seconds_until_next_update()
             
-            # Počakaj do naslednje posodobitve
+            # Wait until next update
             logger.info(f"I'm sleeping {sleep_duration/3600:.2f} hours until the next update..")
-            # Uporabimo wait s časovno omejitvijo namesto sleep, da lahko prej zaznamo zaustavitev
+            # Use wait with timeout instead of sleep to detect stop earlier
             if update_thread_stop_event.wait(timeout=sleep_duration):
                 logger.info("Request received to stop update thread.")
                 break
             
-            # Preveri še enkrat nastavitve pred posodobitvijo
+            # Check settings once more before update
             with get_db_connection() as conn:
                 settings = conn.execute("SELECT * FROM Settings LIMIT 1").fetchone()
             
@@ -1298,49 +1378,292 @@ def auto_update_loop():
                 logger.info("Automatic update is turned off.")
         except Exception as e:
             logger.error(f"Error in auto_update_loop: {e}")
-            time.sleep(300)  # V primeru napake počakaj 5 minut
+            time.sleep(300)  # In case of error, wait 5 minutes
 
-# Funkcija za varen zagon/ponoven zagon niti
+# Function for safe start/restart of thread
 def start_update_thread():
     global update_thread, update_thread_stop_event
     
-    # Najprej ustavi obstoječo nit, če obstaja
+    # First stop existing thread if it exists
     if update_thread and update_thread.is_alive():
         logger.info("I'm stopping the existing update thread...")
-        update_thread_stop_event.set()  # Pošlji signal za zaustavitev
-        update_thread.join(timeout=5)   # Počakaj do 5 sekund, da se nit zaustavi
-        update_thread_stop_event.clear()  # Ponastavi dogodek
+        update_thread_stop_event.set()  # Send stop signal
+        update_thread.join(timeout=5)   # Wait up to 5 seconds for thread to stop
+        update_thread_stop_event.clear()  # Reset event
     
-    # Zaženi novo nit
+    # Start new thread
     logger.info("Starting new thread for automatic update...")
     update_thread = threading.Thread(target=auto_update_loop, daemon=True)
     update_thread.start()
     logger.info("New thread for automatic update started.")
 
-# Zagon avtomatskih posodobitev v ločeni niti
+# Tracking session functions
+def start_tracking_session(episode_id, player_entity_id, episode_url, user_id):
+    """Start tracking playback session"""
+    try:
+        with get_db_connection() as conn:
+            # Delete any existing session for this episode/user
+            conn.execute("""
+                DELETE FROM ActiveTrackingSessions 
+                WHERE episode_id = ? AND user_id = ?
+            """, (episode_id, user_id))
+            
+            # Insert new session
+            conn.execute("""
+                INSERT INTO ActiveTrackingSessions 
+                (episode_id, player_entity_id, episode_url, user_id, started_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+                """, (episode_id, player_entity_id, episode_url, user_id))
+            
+            conn.commit()
+            logger.info(f"Started tracking session: episode {episode_id} on {player_entity_id}")
+            
+    except Exception as e:
+        logger.error(f"Error starting tracking session: {e}")
+
+def end_tracking_session(session_id):
+    """End tracking session"""
+    try:
+        with get_db_connection() as conn:
+            conn.execute("DELETE FROM ActiveTrackingSessions WHERE id = ?", (session_id,))
+            conn.commit()
+            logger.info(f"Ended tracking session: {session_id}")
+    except Exception as e:
+        logger.error(f"Error ending tracking session: {e}")
+
+def get_active_sessions():
+    """Get all active tracking sessions"""
+    try:
+        with get_db_connection() as conn:
+            sessions = conn.execute("""
+                SELECT * FROM ActiveTrackingSessions
+            """).fetchall()
+            return [dict(session) for session in sessions]
+    except Exception as e:
+        logger.error(f"Error getting active sessions: {e}")
+        return []
+
+async def get_player_state_from_ha(player_entity_id):
+    """Get current state of media player from Home Assistant - improved version"""
+    try:
+        supervisor_token = os.environ.get('SUPERVISOR_TOKEN')
+        if not supervisor_token:
+            logger.error("No Supervisor token available")
+            return None
+
+        headers = {
+            "Authorization": f"Bearer {supervisor_token}",
+            "Content-Type": "application/json",
+        }
+
+        # Get player state from HA API
+        response = requests.get(
+            f"http://supervisor/core/api/states/{player_entity_id}",
+            headers=headers,
+            timeout=5
+        )
+
+        if not response.ok:
+            logger.error(f"Error fetching player state: {response.status_code}")
+            return None
+
+        state_data = response.json()
+        
+        # Extract relevant attributes
+        attributes = state_data.get('attributes', {})
+        player_state = {
+            'state': state_data.get('state', 'unknown'),
+            'media_content_id': attributes.get('media_content_id', ''),
+            'media_position': attributes.get('media_position', 0),
+            'media_duration': attributes.get('media_duration', 0),
+            'media_position_updated_at': attributes.get('media_position_updated_at', ''),
+            'media_title': attributes.get('media_title', ''),
+        }
+        
+        return player_state
+        
+    except Exception as e:
+        logger.error(f"Error getting player state for {player_entity_id}: {e}")
+        return None 
+
+def update_session_position_tracking(session_id, position, count):
+    """Update session position tracking data"""
+    try:
+        with get_db_connection() as conn:
+            conn.execute("""
+                UPDATE ActiveTrackingSessions 
+                SET last_position = ?, same_position_count = ?
+                WHERE id = ?
+            """, (position, count, session_id))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error updating session position tracking: {e}")  
+
+async def monitor_active_sessions():
+    """Monitor all active tracking sessions"""
+    logger.info("Starting playback tracking monitor...")
+    
+    while not tracking_thread_stop_event.is_set():
+        try:
+            sessions = get_active_sessions()
+            
+            for session in sessions:
+                try:
+                    # Get current player state from HA
+                    player_state = await get_player_state_from_ha(session['player_entity_id'])
+                    
+                    if not player_state:
+                        continue
+                    
+                    # Check if player is still playing our episode
+                    playing_url = player_state['media_content_id'].replace("builtin://track/", "")
+                    our_url = session['episode_url']
+                    
+                    if playing_url == our_url:
+                        # This is our episode - handle tracking
+                        position = player_state['media_position']
+                        duration = player_state['media_duration']
+                        state = player_state['state']
+    
+                        last_position = session.get('last_position', -1)
+                        same_count = session.get('same_position_count', 0)
+    
+                        if state == "paused" and position > 0:
+                            # PAUSE - save position
+                            await save_playback_position(session['episode_id'], position, session['user_id'])
+        
+                            # Check if position is same as before
+                            if position == last_position:
+                                same_count += 1
+                                logger.info(f"Saved position {position} for episode {session['episode_id']} (count: {same_count})")
+            
+                                if same_count >= 5:
+                                    # Same position 5 times - stop tracking
+                                    end_tracking_session(session['id'])
+                                    logger.info(f"Stopped tracking session {session['id']} - paused for 5+ checks")
+                                    continue
+                            else:
+                                # Position changed - reset counter
+                                same_count = 0
+                                logger.info(f"Saved position {position} for episode {session['episode_id']} (position changed)")
+        
+                            # Update session tracking data
+                            update_session_position_tracking(session['id'], position, same_count)
+        
+                        elif position != last_position and state == "playing":
+                            # Position changed during playing - reset counter and update
+                            update_session_position_tracking(session['id'], position, 0)
+        
+                        elif position == 0 and duration > 0 and state != "playing":
+                            # Only consider completed if session has been running for at least 15 seconds
+                            from datetime import datetime
+                            session_start = datetime.fromisoformat(session['started_at'])
+                            session_age = (datetime.now() - session_start).total_seconds()
+
+                            if session_age > 15:  # Only after 15 seconds
+                                # EPISODE COMPLETED
+                                pass
+
+                    else:
+                        # Not our episode anymore - stop tracking
+                        end_tracking_session(session['id'])
+                        logger.info(f"Stopped tracking session {session['id']} - different content playing")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing session {session.get('id', 'unknown')}: {e}")
+            
+            # Wait 1 second before next check
+            if tracking_thread_stop_event.wait(timeout=1.0):
+                break
+                
+        except Exception as e:
+            logger.error(f"Error in monitor_active_sessions: {e}")
+            # Wait before retrying
+            if tracking_thread_stop_event.wait(timeout=5.0):
+                break
+    
+    logger.info("Playback tracking monitor stopped.")
+async def save_playback_position(episode_id, position, user_id):
+    """Save playback position (async wrapper for existing function)"""
+    try:
+        with get_db_connection() as conn:
+            conn.execute("""
+                INSERT INTO EpisodePlaybackPosition (episode_id, user_id, position, timestamp)
+                VALUES (?, ?, ?, datetime('now'))
+                ON CONFLICT(episode_id, user_id) 
+                DO UPDATE SET position = ?, timestamp = datetime('now')
+            """, (episode_id, user_id, position, position))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error saving playback position: {e}")
+
+async def mark_episode_listened(episode_id, user_id):
+    """Mark episode as listened (async wrapper for existing function)"""
+    try:
+        with get_db_connection() as conn:
+            conn.execute("""
+                INSERT INTO EpisodeListenStatus (episode_id, user_id, poslušano, timestamp)
+                VALUES (?, ?, 1, datetime('now'))
+                ON CONFLICT(episode_id, user_id) 
+                DO UPDATE SET poslušano = 1, timestamp = datetime('now')
+            """, (episode_id, user_id))
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error marking episode as listened: {e}")
+
+def tracking_loop():
+    """Main tracking loop that runs in separate thread"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(monitor_active_sessions())
+    finally:
+        loop.close()
+
+def start_tracking_thread():
+    """Start tracking thread"""
+    global tracking_thread, tracking_thread_stop_event
+    
+    # First stop existing thread if it exists
+    if tracking_thread and tracking_thread.is_alive():
+        logger.info("Stopping existing tracking thread...")
+        tracking_thread_stop_event.set()
+        tracking_thread.join(timeout=5)
+        tracking_thread_stop_event.clear()
+    
+    # Start new thread
+    logger.info("Starting new tracking thread...")
+    tracking_thread = threading.Thread(target=tracking_loop, daemon=True)
+    tracking_thread.start()
+    logger.info("Tracking thread started.")
+
+# Start automatic updates in separate thread
 start_update_thread()
 
-# API za pridobivanje zadnjih dodanih epizod iz vsakega podcasta
+# Start tracking thread for playback monitoring
+start_tracking_thread()
+
+# API for getting latest added episodes from each podcast
 @app.route('/api/latest_episodes', methods=['GET'])
 def get_latest_episodes():
     limit = request.args.get('limit', 10, type=int)
-    # Pridobimo ID uporabnika iz query parametrov
+    # Get user ID from query parameters
     as_user_id = request.args.get('as_user', type=int)
     
-    # Pridobi trenutnega uporabnika
+    # Get current user
     username = get_current_user()
     current_user = get_user_from_db(username)
     
     if not current_user:
         return jsonify({"error": "Napaka pri preverjanju uporabnika."}), 500
 
-    # Določi za katerega uporabnika prikazujemo epizode
+    # Determine for which user we're displaying episodes
     if as_user_id:
-        # Preveri ali ima trenutni uporabnik pravico videti epizode drugega uporabnika
+        # Check if current user has permission to see another user's episodes
         if not current_user['is_tab_user'] and not current_user['is_admin']:
             return jsonify({"error": "Nimate pravice videti epizod drugega uporabnika."}), 403
             
-        # Pridobi podatke o ciljnem uporabniku
+        # Get target user data
         with get_db_connection() as conn:
             target_user = conn.execute("SELECT * FROM Users WHERE id = ?", (as_user_id,)).fetchone()
             if not target_user:
@@ -1349,19 +1672,19 @@ def get_latest_episodes():
         check_user_id = as_user_id
         is_admin = target_user['is_admin'] == 1
     else:
-        # Uporabljamo trenutnega uporabnika
+        # Using current user
         check_user_id = current_user['id']
         is_admin = current_user['is_admin'] == 1
 
     with get_db_connection() as conn:
-        # Za vsakega dostopnega podcasta pridobi zadnjo neposlušano epizodo
+        # For each accessible podcast, get the latest unlistened episode
         if is_admin:
             # Admin uporabnik vidi vse epizode
             podcast_filter = ""
             params = (check_user_id, check_user_id, limit)
         else:
-            # Običajni uporabniki vidijo epizode svojih podcastov in javnih podcastov
-            # Dodamo tudi filter za skrite podcaste
+            # Regular users see episodes from their podcasts and public podcasts
+            # Add filter for hidden podcasts as well
             podcast_filter = """
                 AND (p.user_id = ? OR p.is_public = 1)
                 AND (pvp.hidden IS NULL OR pvp.hidden = 0)
@@ -1389,29 +1712,29 @@ def get_latest_episodes():
         """
         episodes = conn.execute(query, params).fetchall()
         
-        # Če ni dovolj neposlušanih epizod, dodamo tudi poslušane
+        # If there aren't enough unlistened episodes, add listened ones too
         if len(episodes) < limit:
             remaining = limit - len(episodes)
-            # Pridobimo podcaste, za katere še nismo našli epizod
+            # Get podcasts for which we haven't found episodes yet
             existing_podcast_ids = [ep['podcast_id'] for ep in episodes]
             existing_ids_str = ','.join('?' for _ in existing_podcast_ids) if existing_podcast_ids else '0'
             
             if is_admin:
-                # Admin uporabnik vidi vse epizode
+                # Admin user sees all episodes
                 podcast_filter = ""
-                # Tukaj je ključni popravek - pravilno število parametrov
+                # Here's the key fix - correct number of parameters
                 if existing_podcast_ids:
                     params = [check_user_id] + existing_podcast_ids + [remaining]
                 else:
                     params = [check_user_id, remaining]
             else:
-                # Običajni uporabniki vidijo epizode svojih podcastov in javnih podcastov
-                # Dodamo tudi filter za skrite podcaste
+                # Regular users see episodes from their podcasts and public podcasts
+                # Add filter for hidden podcasts as well
                 podcast_filter = """
                     AND (p.user_id = ? OR p.is_public = 1)
                     AND (pvp.hidden IS NULL OR pvp.hidden = 0)
                 """
-                # Tukaj je ključni popravek - pravilno število parametrov
+                # Here's the key fix - correct number of parameters
                 if existing_podcast_ids:
                     params = [check_user_id, check_user_id] + existing_podcast_ids + [remaining]
                 else:
@@ -1437,7 +1760,7 @@ def get_latest_episodes():
             """
             additional_episodes = conn.execute(additional_query, params).fetchall()
             
-            # Združimo rezultate
+            # Merge results
             for ep in additional_episodes:
                 if ep['podcast_id'] not in existing_podcast_ids:
                     episodes.append(ep)
@@ -1447,44 +1770,44 @@ def get_latest_episodes():
     result = []
     for episode in episodes:
         ep_dict = dict(episode)
-        # Odstranimo pomožne stolpce
+        # Remove helper columns
         for key in ['rn', 'uporabnik_poslušal']:
             if key in ep_dict:
                 del ep_dict[key]
         result.append(ep_dict)
     return jsonify(result)
 
-# API za pridobivanje epizod na pavzi za trenutnega uporabnika
+# API for getting paused episodes for current user
 @app.route('/api/episodes/paused', methods=['GET'])
 def get_paused_episodes():
     limit = request.args.get('limit', 3, type=int)
-    # Pridobimo ID uporabnika iz query parametrov
+    # Get user ID from query parameters
     as_user_id = request.args.get('as_user', type=int)
     
-    # Pridobi trenutnega uporabnika
+    # Get current user
     username = get_current_user()
     current_user = get_user_from_db(username)
     
     if not current_user:
         return jsonify({"error": "Napaka pri preverjanju uporabnika."}), 500
 
-    # Določi za katerega uporabnika prikazujemo epizode na pavzi
+    # Determine for which user we're displaying paused episodes
     if as_user_id:
-        # Preveri ali ima trenutni uporabnik pravico videti epizode drugega uporabnika
+        # Check if current user has permission to see another user's episodes
         if not current_user['is_tab_user'] and not current_user['is_admin']:
             return jsonify({"error": "Nimate pravice videti epizod drugega uporabnika."}), 403
             
         check_user_id = as_user_id
     else:
-        # Uporabljamo trenutnega uporabnika
+        # Using current user
         check_user_id = current_user['id']
 
     with get_db_connection() as conn:
-        # Pridobi podatke o ciljnem uporabniku
+        # Get target user data
         target_user = conn.execute("SELECT * FROM Users WHERE id = ?", (check_user_id,)).fetchone()
         
         if current_user['is_admin'] == 1 and not as_user_id:
-            # Admin uporabnik brez as_user parametra - prikaži vse epizode na pavzi
+            # Admin user without as_user parameter - show all paused episodes
             episodes = conn.execute("""
                 SELECT 
                     e.id as episode_id,
@@ -1505,7 +1828,7 @@ def get_paused_episodes():
                 LIMIT ?
             """, (limit,)).fetchall()
         else:
-            # Običajni uporabnik, tab uporabnik ali admin z as_user - prikaži epizode specifičnega uporabnika
+            # Regular user, tab user or admin with as_user - show specific user's episodes
             episodes = conn.execute("""
                 SELECT 
                     e.id as episode_id,
@@ -1527,11 +1850,11 @@ def get_paused_episodes():
                 LIMIT ?
             """, (current_user['id'], check_user_id, limit)).fetchall()
         
-    # Pretvori rezultate in dodaj formatiran čas
+    # Convert results and add formatted time
     result = []
     for episode in episodes:
         ep_dict = dict(episode)
-        # Dodamo formatiran čas predvajanja
+        # Add formatted playback time
         minutes = ep_dict['position'] // 60
         seconds = ep_dict['position'] % 60
         ep_dict['playback_time_formatted'] = f"{minutes}:{seconds:02d}"
@@ -1541,9 +1864,9 @@ def get_paused_episodes():
     return jsonify(result)
 
 
-# Dodamo nove API-je za upravljanje z uporabniki
+# Add new APIs for user management
 
-# API za pridobivanje seznama vseh uporabnikov
+# API for getting list of all users
 @app.route('/api/users', methods=['GET'])
 def get_users():
     try:
@@ -1559,7 +1882,7 @@ def get_users():
         logger.error(f"Error retrieving users: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za pridobivanje uporabnikov, ki imajo podcaste
+# API for getting users who have podcasts
 @app.route('/api/users/with_podcasts', methods=['GET'])
 def get_users_with_podcasts():
     try:
@@ -1579,7 +1902,7 @@ def get_users_with_podcasts():
         logger.error(f"Error retrieving users with podcasts: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za pridobivanje trenutnega uporabnika
+# API for getting current user
 @app.route('/api/users/current', methods=['GET'])
 def get_current_user_info():
     try:
@@ -1589,7 +1912,7 @@ def get_current_user_info():
         if not user:
             return jsonify({"error": "Uporabnik ni najden"}), 404
         
-        # Preverimo, če je uporabnik tab user
+        # Check if user is tab user
         with get_db_connection() as conn:
             tab_user = conn.execute("""
                 SELECT u.id, u.username, u.display_name
@@ -1598,7 +1921,7 @@ def get_current_user_info():
                 LIMIT 1
             """).fetchone()
         
-        # Če je trenutni uporabnik tab user, vrnemo te informacije
+        # If current user is tab user, return this information
         is_tab_user = user['is_tab_user'] == 1
         result = {
             'id': user['id'],
@@ -1608,7 +1931,7 @@ def get_current_user_info():
             'is_tab_user': is_tab_user,
         }
         
-        # Če je ta uporabnik tab user, dodamo še podatke o tem
+        # If this user is tab user, add information about it
         if is_tab_user and tab_user:
             result['is_central_user'] = True
         else:
@@ -1619,7 +1942,7 @@ def get_current_user_info():
         logger.error(f"Error retrieving current user info: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za nastavitev tab uporabnika
+# API for setting tab user
 @app.route('/api/users/settings', methods=['POST'])
 def update_user_settings():
     try:
@@ -1627,10 +1950,10 @@ def update_user_settings():
         tab_user_id = data.get('tab_user_id')
         
         with get_db_connection() as conn:
-            # Najprej resetiramo vse obstoječe tab uporabnike
+            # First reset all existing tab users
             conn.execute("UPDATE Users SET is_tab_user = 0")
             
-            # Če je bil podan ID, nastavimo novega tab uporabnika
+            # If ID was provided, set new tab user
             if tab_user_id:
                 conn.execute("UPDATE Users SET is_tab_user = 1 WHERE id = ?", (tab_user_id,))
             
@@ -1644,25 +1967,25 @@ def update_user_settings():
         logger.error(f"Napaka pri posodabljanju uporabniških nastavitev: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za pridobivanje podcastov določenega uporabnika
+# API for getting specific user's podcasts
 @app.route('/api/users/<int:user_id>/podcasts', methods=['GET'])
 def get_user_podcasts(user_id):
     try:
-        # Najprej preverimo, ali uporabnik obstaja
+        # First check if user exists
         with get_db_connection() as conn:
             user = conn.execute("SELECT * FROM Users WHERE id = ?", (user_id,)).fetchone()
             
             if not user:
                 return jsonify({"error": "Uporabnik ne obstaja"}), 404
             
-            # Pridobi trenutnega uporabnika (tistega, ki je prijavljen)
+            # Get current user (the one who is logged in)
             current_username = get_current_user()
             current_user = get_user_from_db(current_username)
             
             if not current_user:
                 return jsonify({"error": "Napaka pri preverjanju trenutnega uporabnika."}), 500
             
-            # Različni primeri za različne tipe uporabnikov
+            # Different cases for different user types
             is_current_admin = current_user['is_admin'] == 1
             is_current_tab_user = current_user['is_tab_user'] == 1
             is_user_admin = user['is_admin'] == 1
@@ -1670,7 +1993,7 @@ def get_user_podcasts(user_id):
             
             logger.info(f"get_user_podcasts: current_user={current_user['username']}, is_admin={is_current_admin}, is_tab={is_current_tab_user}, viewing_user_id={user_id}, is_self={is_self_view}")
             
-            # 1. Če gledamo admin uporabnika, vrnemo vse podcaste
+            # 1. If viewing admin user, return all podcasts
             if is_user_admin:
                 podcasts = conn.execute("""
                     SELECT p.*, u.display_name as user_display_name 
@@ -1680,7 +2003,7 @@ def get_user_podcasts(user_id):
                 """).fetchall()
                 logger.info(f"I am returning all podcasts for the admin user. {user_id}")
                 
-            # 2. Če je trenutni uporabnik admin ali gleda svoje podcaste
+            # 2. If current user is admin or viewing their own podcasts
             elif is_current_admin or is_self_view:
                 podcasts = conn.execute("""
                     SELECT p.*, u.display_name as user_display_name 
@@ -1691,9 +2014,9 @@ def get_user_podcasts(user_id):
                 """, (user_id,)).fetchall()
                 logger.info(f"User {current_user['id']} is watching podcasts from user {user_id}")
                 
-            # 3. Če je trenutni uporabnik tab uporabnik
+            # 3. If current user is tab user
             elif is_current_tab_user:
-                # Tab uporabnik lahko vidi vse podcaste izbranega uporabnika + javne podcaste
+                # Tab user can see all podcasts of selected user + public podcasts
                 podcasts = conn.execute("""
                     SELECT 
                         p.id,
@@ -1714,9 +2037,9 @@ def get_user_podcasts(user_id):
                 """, (user_id, user_id)).fetchall()
                 logger.info(f"Tab user {current_user['id']} is watching podcasts by user {user_id} (found: {len(podcasts)})")
                 
-            # 4. Ostali primeri (običajni uporabniki gledajo druge uporabnike)
+            # 4. Other cases (regular users viewing other users)
             else:
-                # Prikaži samo javne podcaste tega uporabnika
+                # Show only public podcasts of this user
                 podcasts = conn.execute("""
                     SELECT p.*, u.display_name as user_display_name
                     FROM Podcasts p
@@ -1727,7 +2050,7 @@ def get_user_podcasts(user_id):
                 """, (user_id,)).fetchall()
                 logger.info(f"User {current_user['id']} is watching public podcasts from user {user_id}")
             
-            # Dodaten izpis za debugging
+            # Additional output for debugging
             logger.info(f"Found {len(podcasts)} podcasts")
         
         return jsonify({'podcasts': [dict(podcast) for podcast in podcasts]})
@@ -1735,52 +2058,52 @@ def get_user_podcasts(user_id):
         logger.error(f"Error retrieving user podcasts: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za pridobivanje zadnjih epizod določenega uporabnika
+# API for getting latest episodes of specific user
 @app.route('/api/users/<int:user_id>/latest_episodes', methods=['GET'])
 def get_user_latest_episodes(user_id):
     limit = request.args.get('limit', 10, type=int)
     
     try:
         with get_db_connection() as conn:
-            # Preverimo, ali uporabnik obstaja
+            # Check if user exists
             user = conn.execute("SELECT * FROM Users WHERE id = ?", (user_id,)).fetchone()
             
             if not user:
                 return jsonify({"error": "Uporabnik ne obstaja"}), 404
             
-            # Pridobi trenutnega uporabnika (tistega, ki je prijavljen)
+            # Get current user (the one who is logged in)
             current_username = get_current_user()
             current_user = get_user_from_db(current_username)
             
             if not current_user:
                 return jsonify({"error": "Napaka pri preverjanju trenutnega uporabnika."}), 500
             
-            # Različni primeri za različne tipe uporabnikov
+            # Different cases for different user types
             is_current_admin = current_user['is_admin'] == 1
             is_current_tab_user = current_user['is_tab_user'] == 1
             is_user_admin = user['is_admin'] == 1
             is_self_view = current_user['id'] == user_id
             
-            # Določimo, katere podcaste lahko uporabnik vidi
+            # Determine which podcasts the user can see
             if is_user_admin or is_current_admin or is_self_view or is_current_tab_user:
-                # Lahko vidi vse podcaste uporabnika (z upoštevanjem skritih podcastov za trenutnega uporabnika)
+                # Can see all user's podcasts (considering hidden podcasts for current user)
                 podcast_filter = "AND p.user_id = ?"
                 if is_self_view or is_current_tab_user:
-                    # Za lastne podcaste ali kot tab uporabnik upoštevamo skrite podcaste
+                    # For own podcasts or as tab user, consider hidden podcasts
                     podcast_filter += " AND (pvp.hidden IS NULL OR pvp.hidden = 0)"
                     params = (user_id, current_user['id'], user_id, limit)
                 else:
-                    # Kot admin gledamo vse podcaste uporabnika (brez filtriranja skritih)
+                    # As admin, viewing all user's podcasts (without filtering hidden)
                     params = (user_id, user_id, limit)
             else:
-                # Lahko vidi samo javne podcaste uporabnika (z upoštevanjem skritih podcastov)
+                # Can see only public podcasts of the user (considering hidden podcasts)
                 podcast_filter = """
                     AND p.user_id = ? AND p.is_public = 1
                     AND (pvp.hidden IS NULL OR pvp.hidden = 0)
                 """
                 params = (user_id, current_user['id'], user_id, limit)
             
-            # Za vsak podcast pridobi zadnjo neposlušano epizodo
+            # For each podcast, get the latest unlistened episode
             query = f"""
                 WITH LatestEpisodes AS (
                     SELECT 
@@ -1807,7 +2130,7 @@ def get_user_latest_episodes(user_id):
         result = []
         for episode in episodes:
             ep_dict = dict(episode)
-            # Odstranimo pomožne stolpce
+            # Remove helper columns
             for key in ['rn', 'uporabnik_poslušal']:
                 if key in ep_dict:
                     del ep_dict[key]
@@ -1817,7 +2140,7 @@ def get_user_latest_episodes(user_id):
         logger.error(f"Napaka pri pridobivanju zadnjih epizod uporabnika: {e}")
         return jsonify({"error": str(e)}), 500
 
-# API za posodobitev vidnosti podcasta
+# API for updating podcast visibility
 @app.route('/api/podcasts/<int:podcast_id>/visibility', methods=['PATCH'])
 def update_podcast_visibility(podcast_id):
     data = request.json
@@ -1827,7 +2150,7 @@ def update_podcast_visibility(podcast_id):
         return jsonify({"error": "Manjka parameter 'is_public'."}), 400
 
     username = get_current_user()
-    user = get_user_from_db(username)  # <- POPRAVLJENA VRSTICA
+    user = get_user_from_db(username) 
 
     if not user:
         return jsonify({"error": "Napaka pri preverjanju uporabnika."}), 500
@@ -1839,7 +2162,7 @@ def update_podcast_visibility(podcast_id):
         conn.close()
         return jsonify({"error": "Podcast ne obstaja."}), 404
 
-    # Preveri, ali ima uporabnik pravico urejati podcast
+    # Check if user has permission to edit podcast
     if podcast['user_id'] != user['id'] and not user['is_admin']:
         conn.close()
         return jsonify({"error": "Nimate dovoljenja za urejanje tega podcasta."}), 403
@@ -1850,7 +2173,7 @@ def update_podcast_visibility(podcast_id):
 
     return jsonify({"message": "Vidnost podcasta uspešno posodobljena."}), 200
 
-# API za skrivanje podcasta za trenutnega uporabnika
+# API for hiding podcast for current user
 @app.route('/api/podcasts/<int:podcast_id>/hide', methods=['POST'])
 def hide_podcast(podcast_id):
     username = get_current_user()
@@ -1861,28 +2184,28 @@ def hide_podcast(podcast_id):
 
     conn = get_db_connection()
     
-    # Preveri, ali podcast obstaja
+    # Check if podcast exists
     podcast = conn.execute("SELECT * FROM Podcasts WHERE id = ?", (podcast_id,)).fetchone()
     if not podcast:
         conn.close()
         return jsonify({"error": "Podcast ne obstaja."}), 404
     
         
-    # Preveri, ali že obstaja zapis za vidnost
+    # Check if visibility record already exists
     visibility = conn.execute("""
         SELECT * FROM PodcastVisibilityPreferences 
         WHERE podcast_id = ? AND user_id = ?
     """, (podcast_id, user['id'])).fetchone()
     
     if visibility:
-        # Posodobi obstoječi zapis
+        # Update existing record
         conn.execute("""
             UPDATE PodcastVisibilityPreferences
             SET hidden = 1
             WHERE podcast_id = ? AND user_id = ?
         """, (podcast_id, user['id']))
     else:
-        # Ustvari nov zapis
+        # Create new record
         conn.execute("""
             INSERT INTO PodcastVisibilityPreferences (podcast_id, user_id, hidden)
             VALUES (?, ?, 1)
@@ -1894,7 +2217,7 @@ def hide_podcast(podcast_id):
     logger.info(f"User {user['username']} hid the podcast {podcast_id}")
     return jsonify({"message": "Podcast successfully hidden."}), 200
 
-# API za prikazovanje podcasta za trenutnega uporabnika
+# API for showing podcast for current user
 @app.route('/api/podcasts/<int:podcast_id>/show', methods=['POST'])
 def show_podcast(podcast_id):
     username = get_current_user()
@@ -1905,13 +2228,13 @@ def show_podcast(podcast_id):
 
     conn = get_db_connection()
     
-    # Preveri, ali podcast obstaja
+    # Check if podcast exists
     podcast = conn.execute("SELECT * FROM Podcasts WHERE id = ?", (podcast_id,)).fetchone()
     if not podcast:
         conn.close()
         return jsonify({"error": "Podcast ne obstaja."}), 404
     
-    # Izbriši ali posodobi zapis za vidnost
+    # Delete or update visibility record
     conn.execute("""
         DELETE FROM PodcastVisibilityPreferences
         WHERE podcast_id = ? AND user_id = ?
@@ -1923,7 +2246,7 @@ def show_podcast(podcast_id):
     logger.info(f"User {user['username']} showed a podcast {podcast_id}")
     return jsonify({"message": "Podcast successfully displayed."}), 200
 
-# API za pridobivanje skritih podcastov za trenutnega uporabnika
+# API for getting hidden podcasts for current user
 @app.route('/api/podcasts/hidden', methods=['GET'])
 def get_hidden_podcasts():
     username = get_current_user()
@@ -1934,7 +2257,7 @@ def get_hidden_podcasts():
 
     conn = get_db_connection()
     
-    # Pridobi vse skrite podcaste
+    # Get all hidden podcasts
     podcasts = conn.execute("""
         SELECT p.*, u.display_name as user_display_name 
         FROM Podcasts p
@@ -1947,7 +2270,7 @@ def get_hidden_podcasts():
     logger.info(f"Found {len(podcasts)} hidden podcasts for the user {user['username']}.")
     return jsonify([dict(podcast) for podcast in podcasts])
 
-# dodamo endpoint za upravljanje admin statusa
+# add endpoint for managing admin status
 @app.route('/api/users/admin_status', methods=['POST'])
 def update_user_admin_status():
     try:
@@ -1958,7 +2281,7 @@ def update_user_admin_status():
         if not user_id:
             return jsonify({"error": "Manjka user_id"}), 400
 
-        # Preveri ali trenutni uporabnik obstaja in je admin
+        # Check if current user exists and is admin
         current_username = get_current_user()
         current_user = get_user_from_db(current_username)
         
@@ -1966,7 +2289,7 @@ def update_user_admin_status():
             return jsonify({"error": "Nimate pravic za spreminjanje admin statusa."}), 403
 
         with get_db_connection() as conn:
-            # Preverimo ali uporabnik obstaja
+            # Check if user exists
             user = conn.execute("SELECT * FROM Users WHERE id = ?", (user_id,)).fetchone()
             if not user:
                 return jsonify({"error": "Uporabnik ne obstaja"}), 404

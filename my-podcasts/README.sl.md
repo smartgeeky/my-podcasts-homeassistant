@@ -20,8 +20,10 @@ My Podcasts je celovit Home Assistant dodatek za upravljanje in poslušanje podc
 
 ### 🎵 Funkcije Predvajanja
 - **Vgrajen Brskalniški Predvajalnik**: Predvajajte epizode neposredno v spletnem vmesniku
-- **Home Assistant Integracija**: Predvajajte na katerikoli povezani medijski predvajalnik
-- **Sledenje Pozicije Predvajanja**: Nadaljujte epizode tam, kjer ste končali
+- **Home Assistant Integracija**: Predvajajte na katerikoli povezani medijski predvajalnik s pametnim nadaljevanjem pozicije
+- **Sledenje Pozicije Predvajanja**: Nadaljujte epizode tam, kjer ste končali na vseh napravah
+- **Pametna Seek Tehnologija**: Epizode se avtomatsko začnejo na shranjeni poziciji brez kratkega predvajanja od začetka
+- **Sledenje Sej v Realnem Času**: Aktivno spremljanje predvajanja na Home Assistant napravah
 - **Status Poslušanja**: Označite epizode kot poslušane z vizualnimi označevalci
 
 ### 🎨 Uporabniški Vmesnik
@@ -35,6 +37,8 @@ My Podcasts je celovit Home Assistant dodatek za upravljanje in poslušanje podc
 - **Opisi Epizod**: Polni opisi epizod z razširljivim besedilom
 - **Paginacija**: Učinkovito brskanje po velikih seznamih epizod
 - **Iskanje in Filtriranje**: Enostavna navigacija po vaši knjižnici podcastov
+- **Sledenje Aktivnih Sej**: Spremljanje predvajanja v realnem času na Home Assistant napravah
+- **Inteligentno Upravljanje Pozicij**: Brezhibna sinhronizacija pozicij med brskalniškimi in HA predvajalniki
 
 ## 🚀 Namestitev
 
