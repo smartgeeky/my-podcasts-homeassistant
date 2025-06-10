@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS EpisodePlaybackPosition (
     UNIQUE(episode_id, user_id)
 );
 
+
 CREATE TABLE IF NOT EXISTS ActiveTrackingSessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     episode_id INTEGER NOT NULL,
@@ -90,6 +91,8 @@ CREATE TABLE IF NOT EXISTS ActiveTrackingSessions (
     episode_url TEXT NOT NULL,
     user_id INTEGER NOT NULL,
     started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_position INTEGER DEFAULT -1,
+    same_position_count INTEGER DEFAULT 0,
     FOREIGN KEY (episode_id) REFERENCES Episodes (id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES Users (id) ON DELETE CASCADE,
     UNIQUE(episode_id, user_id, player_entity_id)
