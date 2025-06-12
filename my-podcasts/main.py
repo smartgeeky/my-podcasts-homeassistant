@@ -28,10 +28,6 @@ logger = logging.getLogger(__name__)  # Added logger definition
 update_thread = None
 update_thread_stop_event = threading.Event()
 
-# Global variables for tracking playback sessions
-tracking_thread = None
-tracking_thread_stop_event = threading.Event()
-
 # Function for database connection
 def get_db_connection():
     conn = sqlite3.connect('/data/mypodcasts.db', isolation_level=None, check_same_thread=False)
@@ -897,34 +893,6 @@ async def play_episode():
         return jsonify({"error": "Missing required parameters"}), 400
 
     try:
-        # Get current user for tracking
-        username = get_current_user()
-        user = get_user_from_db(username)
-        if not user:
-            return jsonify({"error": "User not found"}), 401
-
-        # Get episode_id from URL and check for saved position
-        episode_id = None
-        saved_position = 0
-        with get_db_connection() as conn:
-            episode = conn.execute("SELECT id FROM Episodes WHERE url = ?", (episode_url,)).fetchone()
-            if episode:
-                episode_id = episode['id']
-                
-                # Check for saved position if start_position not provided
-                if start_position == 0:
-                    position_data = conn.execute("""
-                        SELECT position FROM EpisodePlaybackPosition 
-                        WHERE episode_id = ? AND user_id = ?
-                    """, (episode_id, user['id'])).fetchone()
-                    
-                    if position_data and position_data['position'] > 0:
-                        saved_position = position_data['position']
-                        logger.info(f"Found saved position {saved_position} for episode {episode_id}")
-
-        # Use saved position if no start_position was provided
-        final_start_position = start_position if start_position > 0 else saved_position
-
         # First start playback
         play_command = {
             "type": "call_service",
@@ -942,83 +910,35 @@ async def play_episode():
         }
         await ha_websocket_call(play_command)
 
-        # Start tracking session if we found episode_id
-        if episode_id:
-            start_tracking_session(episode_id, player_entity_id, episode_url, user['id'])
-
-        # If we have a position to seek to, use improved seeking logic
-        if final_start_position > 0:
-            seek_success = await smart_seek_to_position(player_entity_id, final_start_position)
+        # If we have start position, wait longer and send seek command
+        if start_position > 0:
+            # Wait 5 seconds for media to fully load
+            await asyncio.sleep(5)
             
-            if seek_success:
-                minutes = final_start_position // 60
-                seconds = final_start_position % 60
+            seek_command = {
+                "type": "call_service",
+                "domain": "media_player",
+                "service": "media_seek",
+                "service_data": {
+                    "entity_id": player_entity_id,
+                    "seek_position": start_position
+                },
+                "id": 3
+            }
+            
+            try:
+                await ha_websocket_call(seek_command)
+                minutes = start_position // 60
+                seconds = start_position % 60
                 return jsonify({"message": f"Predvajam epizodo od pozicije {minutes}:{seconds:02d}"})
-            else:
+            except Exception as seek_error:
+                logger.error(f"Error seeking to position {start_position}: {str(seek_error)}")
                 return jsonify({"message": "Predvajam epizodo (pozicija ni bila nastavljena)"})
         
         return jsonify({"message": "Predvajam epizodo"})
     except Exception as e:
         logger.error(f"Error in play_episode: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-async def smart_seek_to_position(player_entity_id, seek_position, max_attempts=10):
-    """
-    Pametno iskanje pozicije - čaka da se media naloži pred seek operacijo
-    """
-    try:
-        logger.info(f"Starting smart seek to position {seek_position} for player {player_entity_id}")
-        
-        # Počakaj da se predvajanje začne in media naloži
-        for attempt in range(max_attempts):
-            await asyncio.sleep(1)  # Počakaj 1 sekundo med poskusi
-            
-            # Preveri stanje predvajalnika
-            player_state = await get_player_state_from_ha(player_entity_id)
-            
-            if not player_state:
-                logger.warning(f"Could not get player state, attempt {attempt + 1}")
-                continue
-                
-            state = player_state.get('state', 'unknown')
-            duration = player_state.get('media_duration', 0)
-            current_position = player_state.get('media_position', 0)
-            
-            logger.info(f"Attempt {attempt + 1}: state={state}, duration={duration}, position={current_position}")
-            
-            # Preverimo ali je media pripravljena
-            if state in ['playing', 'paused'] and duration > 0:
-                # Media je pripravljena, lahko izvršimo seek
-                logger.info(f"Media ready after {attempt + 1} attempts, executing seek to {seek_position}")
-                
-                seek_command = {
-                    "type": "call_service",
-                    "domain": "media_player",
-                    "service": "media_seek",
-                    "service_data": {
-                        "entity_id": player_entity_id,
-                        "seek_position": seek_position
-                    },
-                    "id": 3
-                }
-                
-                await ha_websocket_call(seek_command)
-                
-                # Počakaj malo in preveri ali je seek uspešen
-                await asyncio.sleep(2)
-                final_state = await get_player_state_from_ha(player_entity_id)
-                if final_state:
-                    final_position = final_state.get('media_position', 0)
-                    logger.info(f"Seek completed, final position: {final_position}")
-                
-                return True
-                
-        logger.error(f"Failed to seek after {max_attempts} attempts")
-        return False
-        
-    except Exception as e:
-        logger.error(f"Error in smart_seek_to_position: {e}")
-        return False
 
 @app.route('/api/podcasts/<int:podcast_id>/add_missing_episodes', methods=['POST'])
 def add_missing_episodes(podcast_id):
@@ -1397,251 +1317,8 @@ def start_update_thread():
     update_thread.start()
     logger.info("New thread for automatic update started.")
 
-# Tracking session functions
-def start_tracking_session(episode_id, player_entity_id, episode_url, user_id):
-    """Start tracking playback session"""
-    try:
-        with get_db_connection() as conn:
-            # Delete any existing session for this episode/user
-            conn.execute("""
-                DELETE FROM ActiveTrackingSessions 
-                WHERE episode_id = ? AND user_id = ?
-            """, (episode_id, user_id))
-            
-            # Insert new session
-            conn.execute("""
-                INSERT INTO ActiveTrackingSessions 
-                (episode_id, player_entity_id, episode_url, user_id, started_at)
-                VALUES (?, ?, ?, ?, datetime('now'))
-                """, (episode_id, player_entity_id, episode_url, user_id))
-            
-            conn.commit()
-            logger.info(f"Started tracking session: episode {episode_id} on {player_entity_id}")
-            
-    except Exception as e:
-        logger.error(f"Error starting tracking session: {e}")
-
-def end_tracking_session(session_id):
-    """End tracking session"""
-    try:
-        with get_db_connection() as conn:
-            conn.execute("DELETE FROM ActiveTrackingSessions WHERE id = ?", (session_id,))
-            conn.commit()
-            logger.info(f"Ended tracking session: {session_id}")
-    except Exception as e:
-        logger.error(f"Error ending tracking session: {e}")
-
-def get_active_sessions():
-    """Get all active tracking sessions"""
-    try:
-        with get_db_connection() as conn:
-            sessions = conn.execute("""
-                SELECT * FROM ActiveTrackingSessions
-            """).fetchall()
-            return [dict(session) for session in sessions]
-    except Exception as e:
-        logger.error(f"Error getting active sessions: {e}")
-        return []
-
-async def get_player_state_from_ha(player_entity_id):
-    """Get current state of media player from Home Assistant - improved version"""
-    try:
-        supervisor_token = os.environ.get('SUPERVISOR_TOKEN')
-        if not supervisor_token:
-            logger.error("No Supervisor token available")
-            return None
-
-        headers = {
-            "Authorization": f"Bearer {supervisor_token}",
-            "Content-Type": "application/json",
-        }
-
-        # Get player state from HA API
-        response = requests.get(
-            f"http://supervisor/core/api/states/{player_entity_id}",
-            headers=headers,
-            timeout=5
-        )
-
-        if not response.ok:
-            logger.error(f"Error fetching player state: {response.status_code}")
-            return None
-
-        state_data = response.json()
-        
-        # Extract relevant attributes
-        attributes = state_data.get('attributes', {})
-        player_state = {
-            'state': state_data.get('state', 'unknown'),
-            'media_content_id': attributes.get('media_content_id', ''),
-            'media_position': attributes.get('media_position', 0),
-            'media_duration': attributes.get('media_duration', 0),
-            'media_position_updated_at': attributes.get('media_position_updated_at', ''),
-            'media_title': attributes.get('media_title', ''),
-        }
-        
-        return player_state
-        
-    except Exception as e:
-        logger.error(f"Error getting player state for {player_entity_id}: {e}")
-        return None 
-
-def update_session_position_tracking(session_id, position, count):
-    """Update session position tracking data"""
-    try:
-        with get_db_connection() as conn:
-            conn.execute("""
-                UPDATE ActiveTrackingSessions 
-                SET last_position = ?, same_position_count = ?
-                WHERE id = ?
-            """, (position, count, session_id))
-            conn.commit()
-    except Exception as e:
-        logger.error(f"Error updating session position tracking: {e}")  
-
-async def monitor_active_sessions():
-    """Monitor all active tracking sessions"""
-    logger.info("Starting playback tracking monitor...")
-    
-    while not tracking_thread_stop_event.is_set():
-        try:
-            sessions = get_active_sessions()
-            
-            for session in sessions:
-                try:
-                    # Get current player state from HA
-                    player_state = await get_player_state_from_ha(session['player_entity_id'])
-                    
-                    if not player_state:
-                        continue
-                    
-                    # Check if player is still playing our episode
-                    playing_url = player_state['media_content_id'].replace("builtin://track/", "")
-                    our_url = session['episode_url']
-                    
-                    if playing_url == our_url:
-                        # This is our episode - handle tracking
-                        position = player_state['media_position']
-                        duration = player_state['media_duration']
-                        state = player_state['state']
-    
-                        last_position = session.get('last_position', -1)
-                        same_count = session.get('same_position_count', 0)
-    
-                        if state == "paused" and position > 0:
-                            # PAUSE - save position
-                            await save_playback_position(session['episode_id'], position, session['user_id'])
-        
-                            # Check if position is same as before
-                            if position == last_position:
-                                same_count += 1
-                                logger.info(f"Saved position {position} for episode {session['episode_id']} (count: {same_count})")
-            
-                                if same_count >= 5:
-                                    # Same position 5 times - stop tracking
-                                    end_tracking_session(session['id'])
-                                    logger.info(f"Stopped tracking session {session['id']} - paused for 5+ checks")
-                                    continue
-                            else:
-                                # Position changed - reset counter
-                                same_count = 0
-                                logger.info(f"Saved position {position} for episode {session['episode_id']} (position changed)")
-        
-                            # Update session tracking data
-                            update_session_position_tracking(session['id'], position, same_count)
-        
-                        elif position != last_position and state == "playing":
-                            # Position changed during playing - reset counter and update
-                            update_session_position_tracking(session['id'], position, 0)
-        
-                        elif position == 0 and duration > 0 and state != "playing":
-                            # Only consider completed if session has been running for at least 15 seconds
-                            from datetime import datetime
-                            session_start = datetime.fromisoformat(session['started_at'])
-                            session_age = (datetime.now() - session_start).total_seconds()
-
-                            if session_age > 15:  # Only after 15 seconds
-                                # EPISODE COMPLETED
-                                pass
-
-                    else:
-                        # Not our episode anymore - stop tracking
-                        end_tracking_session(session['id'])
-                        logger.info(f"Stopped tracking session {session['id']} - different content playing")
-                        
-                except Exception as e:
-                    logger.error(f"Error processing session {session.get('id', 'unknown')}: {e}")
-            
-            # Wait 1 second before next check
-            if tracking_thread_stop_event.wait(timeout=1.0):
-                break
-                
-        except Exception as e:
-            logger.error(f"Error in monitor_active_sessions: {e}")
-            # Wait before retrying
-            if tracking_thread_stop_event.wait(timeout=5.0):
-                break
-    
-    logger.info("Playback tracking monitor stopped.")
-async def save_playback_position(episode_id, position, user_id):
-    """Save playback position (async wrapper for existing function)"""
-    try:
-        with get_db_connection() as conn:
-            conn.execute("""
-                INSERT INTO EpisodePlaybackPosition (episode_id, user_id, position, timestamp)
-                VALUES (?, ?, ?, datetime('now'))
-                ON CONFLICT(episode_id, user_id) 
-                DO UPDATE SET position = ?, timestamp = datetime('now')
-            """, (episode_id, user_id, position, position))
-            conn.commit()
-    except Exception as e:
-        logger.error(f"Error saving playback position: {e}")
-
-async def mark_episode_listened(episode_id, user_id):
-    """Mark episode as listened (async wrapper for existing function)"""
-    try:
-        with get_db_connection() as conn:
-            conn.execute("""
-                INSERT INTO EpisodeListenStatus (episode_id, user_id, poslušano, timestamp)
-                VALUES (?, ?, 1, datetime('now'))
-                ON CONFLICT(episode_id, user_id) 
-                DO UPDATE SET poslušano = 1, timestamp = datetime('now')
-            """, (episode_id, user_id))
-            conn.commit()
-    except Exception as e:
-        logger.error(f"Error marking episode as listened: {e}")
-
-def tracking_loop():
-    """Main tracking loop that runs in separate thread"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(monitor_active_sessions())
-    finally:
-        loop.close()
-
-def start_tracking_thread():
-    """Start tracking thread"""
-    global tracking_thread, tracking_thread_stop_event
-    
-    # First stop existing thread if it exists
-    if tracking_thread and tracking_thread.is_alive():
-        logger.info("Stopping existing tracking thread...")
-        tracking_thread_stop_event.set()
-        tracking_thread.join(timeout=5)
-        tracking_thread_stop_event.clear()
-    
-    # Start new thread
-    logger.info("Starting new tracking thread...")
-    tracking_thread = threading.Thread(target=tracking_loop, daemon=True)
-    tracking_thread.start()
-    logger.info("Tracking thread started.")
-
 # Start automatic updates in separate thread
 start_update_thread()
-
-# Start tracking thread for playback monitoring
-start_tracking_thread()
 
 # API for getting latest added episodes from each podcast
 @app.route('/api/latest_episodes', methods=['GET'])

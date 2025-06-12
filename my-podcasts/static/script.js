@@ -1,7 +1,7 @@
-// Te funkcije definiramo zunaj DOMContentLoaded dogodka, da bodo globalno dostopne
-// Funkcija za prikaz vseh epizod v modalnem oknu
+// We define these functions outside the DOMContentLoaded event to make them globally accessible
+// Function to display all episodes in a modal window
 window.showAllEpisodes = async function() {
-    // Če modalnega okna še ni v DOM, ga dodaj
+    // If the modal window is not already in the DOM, add it
     if (!document.getElementById('episodesModal')) {
         const modalHTML = `
             <div id="episodesModal" class="modal-overlay">
@@ -25,21 +25,21 @@ window.showAllEpisodes = async function() {
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
-        // Aplikacija prevodov za novo dodano modalno okno
+        // Translation application for the newly added modal window
         if (window.i18n) {
             window.i18n.applyTranslations();
         }
     }
     
-    // Prikaži modalno okno
+    // Show modal window
     const modal = document.getElementById('episodesModal');
     modal.style.display = 'flex';
     
-    // Naloži vse zadnje dodane epizode
+    // Load all recently added episodes
     await loadAllLatestEpisodes();
 };
 
-// Funkcija za zapiranje modalnega okna
+// Function to close a modal window
 window.closeModal = function() {
     const modal = document.getElementById('episodesModal');
     if (modal) {
@@ -47,30 +47,30 @@ window.closeModal = function() {
     }
 };
 
-// Funkcija za nalaganje vseh zadnjih dodanih epizod
+// Feature to download all the latest added episodes
 async function loadAllLatestEpisodes() {
     const ingressBase = window.location.pathname.replace(/\/$/, '');
     const modalEpisodesList = document.getElementById('modalEpisodesList');
     
     try {
-        // Prikaži stanje nalaganja
+        // Show loading status
         modalEpisodesList.innerHTML = `
             <div class="loading">
                 throw new Error(window.i18n.t('states.error_loading'));
             </div>
         `;
         
-        // Pridobi as_user parameter iz URL-ja, če obstaja
+        // Gets the as_user parameter from the URL if it exists
         const urlParams = new URLSearchParams(window.location.search);
         const asUserId = urlParams.get('as_user');
         
-        // Sestavi URL za API klic z upoštevanjem as_user parametra
+        // Constructs the URL for the API call, taking into account the as_user parameter
         let apiUrl = `${ingressBase}/api/latest_episodes?limit=100`;
         if (asUserId) {
             apiUrl += `&as_user=${asUserId}`;
         }
         
-        // Pridobi vse zadnje dodane neposlušane epizode (brez omejitve)
+        // Get all recently added unlistened episodes (no limit)
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
@@ -88,7 +88,7 @@ async function loadAllLatestEpisodes() {
             return;
         }
         
-        // Prikaži seznam epizod
+        // Show episode list
         modalEpisodesList.innerHTML = episodes.map(episode => {
             // Format date to a more readable format
             const date = new Date(episode.datum_izdaje);
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toast = document.getElementById('toast');
     const latestEpisodesList = document.getElementById('latestEpisodesList');
 
-    // Inicializiraj uporabnika ob nalaganju strani
+    // Initialize user on page load
     fetch(`${ingressBase}/api/init_user`)
         .then(response => {
             if (!response.ok) {
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             const naslov = document.getElementById('naslov').value.trim();
             const rssUrl = document.getElementById('rssUrl').value.trim();
-            // Dodana podpora za isPublic checkbox
+            // Added support for isPublic checkbox
             const isPublic = document.getElementById('isPublic').checked ? 1 : 0;
 
             if (!naslov || !rssUrl) {
@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ 
                         naslov, 
                         rss_url: rssUrl,
-                        is_public: isPublic // Dodan parameter za javnost podcasta
+                        is_public: isPublic 
                     }),
                 });
 
@@ -209,11 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(window.i18n.t('messages.podcast_added'));
                     loadPodcasts();
                     podcastForm.reset();
-                    // Ponovno naloži tudi zadnje epizode, saj bo morda dodan nov podcast
+                    // Also re-download the latest episodes as a new podcast may be added
                     if (latestEpisodesList) {
                         loadLatestEpisodes();
                     }
-                    // Ponovno naloži tudi epizode na pavzi
+                    // Reloads paused episodes as well
                     loadPausedEpisodes();
                 } else {
                     const error = await response.json();
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load all podcasts
     async function loadPodcasts() {
         try {
-            if (!podcastList) return; // Preveri, če element obstaja
+            if (!podcastList) return; // Check if an element exists
         
             showLoading();
             const response = await fetch(`${ingressBase}/api/podcasts`);
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Najprej pridobimo podatke o trenutnem uporabniku
+            // First, we get information about the current user
             const userResponse = await fetch(`${ingressBase}/api/users/current`);
             if (!userResponse.ok) {
                 throw new Error('Error fetching user data.');
@@ -260,9 +260,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentUser = await userResponse.json();
 
             podcastList.innerHTML = podcasts.map(podcast => {
-                // Določimo, ali je uporabnik lastnik podcasta
+                // Determine if the user owns the podcast
                 const isOwner = podcast.user_id === currentUser.id;
-                // Določimo, ali naj prikažemo gumb za skrivanje (samo za javne podcaste drugih uporabnikov)
+                // Determine whether to show the hide button (only for other users' public podcasts)
                 const showHideButton = podcast.is_public && !isOwner;
                 
                     return `
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load latest episodes
     async function loadLatestEpisodes() {
     try {
-        if (!latestEpisodesList) return; // Preveri, če element obstaja
+        if (!latestEpisodesList) return; // Check if an element exists
         
         latestEpisodesList.innerHTML = `
             <div class="loading">
@@ -316,11 +316,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // Pridobi as_user parameter iz URL-ja, če obstaja
+        // Gets the as_user parameter from the URL if it exists
         const urlParams = new URLSearchParams(window.location.search);
         const asUserId = urlParams.get('as_user');
 
-        // Sestavi URL za API klic
+        // Compose URL for API call
         let apiUrl = `${ingressBase}/api/latest_episodes?limit=8`;
         if (asUserId) {
             apiUrl += `&as_user=${asUserId}`;
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Use a placeholder image if podcast image is not available
                 const imageUrl = episode.image_url || 'https://via.placeholder.com/60';
                 
-                // Dodaj stanje poslušanosti
+                // Add listening status
                 const listenedIcon = episode.poslušano ? '✅ ' : '';
                 
                 return `
@@ -391,11 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pausedEpisodesList || !pausedEpisodesContainer) return;
         
         try {
-            // Pridobi as_user parameter iz URL-ja, če obstaja
+            // Gets the as_user parameter from the URL if it exists
             const urlParams = new URLSearchParams(window.location.search);
             const asUserId = urlParams.get('as_user');
 
-            // Sestavi URL za API klic
+            // Compose URL for API call
             let apiUrl = `${ingressBase}/api/episodes/paused?limit=3`;
             if (asUserId) {
                 apiUrl += `&as_user=${asUserId}`;
@@ -410,12 +410,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const episodes = await response.json();
 
             if (episodes.length === 0) {
-                // Skrij sekcijo, če ni epizod na pavzi
+                // Hide section if no episodes are paused
                 pausedEpisodesContainer.style.display = 'none';
                 return;
             }
 
-            // Prikaži sekcijo
+            // Show section
             pausedEpisodesContainer.style.display = 'block';
 
             pausedEpisodesList.innerHTML = episodes.map(episode => {
@@ -438,12 +438,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
         } catch (error) {
             console.error('Error loading paused episodes:', error);
-            // V primeru napake skrij sekcijo
+            // In case of error, hide section
             pausedEpisodesContainer.style.display = 'none';
         }
     }
 
-    // Event listeners za paginacijo
+    // Event listeners for pagination
     const pageInput = document.getElementById('pageInput');
     if (pageInput) {
         pageInput.addEventListener('keypress', function(e) {
@@ -469,11 +469,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 showToast(window.i18n.t('messages.all_podcasts_updated'));
                 await loadPodcasts();
-                // Ponovno naloži tudi zadnje epizode
+                // Reload the latest episodes too
                 if (latestEpisodesList) {
                     loadLatestEpisodes();
                 }
-                // Ponovno naloži tudi epizode na pavzi
+                // Reloads paused episodes as well
                 loadPausedEpisodes();
             } else {
                 throw new Error('Error updating podcasts.');
@@ -497,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Delete podcast
     window.deletePodcast = async function(podcastId) {
         try {
-            // Najprej preveri uporabo podcasta
+            // Check podcast usage first
             const checkResponse = await fetch(`${ingressBase}/api/podcasts/${podcastId}/check_usage`);
             
             if (!checkResponse.ok) {
@@ -507,26 +507,26 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const usageData = await checkResponse.json();
             
-            // Glede na rezultat preverjanja izberi akcijo
+            // Depending on the result of the check, choose an action.
             if (usageData.can_delete) {
-                // Lahko se direktno briše
+                // Can be deleted directly
                 let confirmMessage = window.i18n.t('messages.confirm_delete_podcast');
                 if (usageData.reason === 'admin_user') {
                     confirmMessage = window.i18n.t('messages.confirm_delete_podcast_admin');
                 } else if (usageData.reason === 'hidden_with_history') {
-                    // ... nič dodatnega ...
+                    // ... nothing extra ...
                 }
                 if (!confirm(confirmMessage)) return;
-                // Direktno brisanje
+                // Direct deletion
                 await performPodcastDeletion(podcastId);
             } else {
-                // Ne more se direktno brisati
+                // Cannot be deleted directly
                 if (usageData.reason === 'hidden_with_history') {
-                    // Samo admin lahko briše
+                    // Only admin can delete
                     showToast(usageData.message, 'error');
                     return;
                 } else if (usageData.reason === 'visible_users') {
-                    // Ponudi opcijo skrivanja
+                    // Offer a hiding option
                     const userChoice = confirm(
                         `${usageData.message}\n\n` +
                         'Choose action:\n' +
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Cancel = Keep podcast'
                     );
                     if (userChoice) {
-                        // Skrij podcast namesto brisanja
+                        // Hide a podcast instead of deleting it
                         await hidePodcast(podcastId, document.querySelector(`[onclick*="deletePodcast(${podcastId})"]`));
                     }
                     return;
@@ -546,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Pomožna funkcija za dejansko brisanje
+    // Auxiliary function for actual deletion
     async function performPodcastDeletion(podcastId) {
         try {
             const response = await fetch(`${ingressBase}/api/podcasts/${podcastId}`, {
@@ -556,11 +556,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 showToast(window.i18n.t('messages.podcast_deleted'));
                 await loadPodcasts();
-                // Ponovno naloži tudi zadnje epizode
+                // Reload the latest episodes too
                 if (latestEpisodesList) {
                     loadLatestEpisodes();
                 }
-                // Ponovno naloži tudi epizode na pavzi
+                // Reloads paused episodes as well
                 loadPausedEpisodes();
             } else {
                 const errorData = await response.json();
@@ -576,13 +576,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = `${ingressBase}/podcast.html?id=${podcastId}`;
     };
 
-    // Dodamo funkcionalnost za branje parametra as_user iz URL-ja
+    // We add functionality to read the as_user parameter from the URL
     function getAsUserIdFromUrl() {
         const params = new URLSearchParams(window.location.search);
         return params.get('as_user');
     }
 
-    // Posodobimo funkcijo za navigacijo na podcast.html
+    // Let's update the navigation function on podcast.html
     window.goToPodcastEpisode = function(podcastId, episodeId, asUserId) {
         if (!asUserId || asUserId === 'null') {
             asUserId = getAsUserIdFromUrl();
@@ -591,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = url;
     };
 
-    // Posodobimo funkcijo za označevanje epizod kot poslušanih
+    // We're updating the feature for marking episodes as listened to
     window.playEpisode = async function(url, episodeId) {
         const audioPlayer = document.getElementById('audioPlayer');
         audioPlayer.src = url;
@@ -599,11 +599,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
         // Mark episode as listened
         try {
-            // Pridobimo as_user_id iz URL, če obstaja
+            // Get as_user_id from URL if it exists
             const urlParams = new URLSearchParams(window.location.search);
             const asUserId = urlParams.get('as_user');
         
-            // Pripravimo podatke za zahtevek
+            // We prepare the data for the claim
             const requestData = asUserId ? { as_user_id: parseInt(asUserId) } : {};
         
             const response = await fetch(`${ingressBase}/api/episodes/mark_listened/${episodeId}`, {
@@ -625,7 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Funkcija za skrivanje podcasta
+    // Feature to hide podcast
     window.hidePodcast = async function(podcastId, buttonElement) {
         if (!confirm(window.i18n.t('messages.confirm_hide_podcast'))) return;
         
@@ -643,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             showToast(window.i18n.t('messages.podcast_hidden'));
         
-            // Odstranimo celoten podcast-card element
+            // Let's remove the entire podcast-card element
             if (buttonElement) {
                 const podcastCard = buttonElement.closest('.podcast-card');
                 if (podcastCard) {
@@ -653,26 +653,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         podcastCard.remove();
                     }, 300);
                 } else {
-                    // Če ne najdemo elementa, ponovno naložimo vse podcaste
+                    // If we don't find the item, we reload all podcasts.
                     await loadPodcasts();
                 }
             } else {
-                // Če buttonElement ni podan, ponovno naložimo vse podcaste
+                // If buttonElement is not specified, reload all podcasts
                 await loadPodcasts();
             }
         
-            // Ponovno naložimo tudi zadnje epizode, saj smo skrili podcast
+            // We're also re-uploading the latest episodes, as we've hidden the podcast
             if (latestEpisodesList) {
                 loadLatestEpisodes();
             }
-            // Ponovno naloži tudi epizode na pavzi
+            // Reloads paused episodes as well
             loadPausedEpisodes();
         } catch (error) {
             showToast(error.message, 'error');
         }
     };
 
-    // Posodobimo funkcijo za predvajanje na napravi
+    // Let's update the playback feature on your device
     window.playOnDevice = async function(episodeUrl, episodeTitle, playerEntityId, episodeId) {
         if (!playerEntityId) return;
     
@@ -689,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
             if (!response.ok) throw new Error('Error playing episode');
         
-            // Mark episode as listened (z upoštevanjem as_user parametra)
+            // Mark episode as listened (taking into account the as_user parameter)
             const asUserId = getAsUserIdFromUrl();
             const requestData = asUserId ? { as_user_id: parseInt(asUserId) } : {};
         
@@ -727,15 +727,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 });
 
-// Naslednje funkcije so dostopne globalno
-// za uporabo znotraj podcast.html
+// The following functions are available globally
+// for use within podcast.html
 
-// Spremenljivke za paginacijo
+// Pagination variables
 let currentPage = 1;
 let pageSize = 5;
 let totalEpisodes = 0;
 
-// Funkcija za nalaganje epizod
+// Episode download feature
 async function loadEpisodes() {
     if (typeof podcastId === 'undefined' || !document.getElementById('episodes')) return;
     

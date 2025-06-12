@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Globalni stili in spremenljivke
+   Global styles and variables
    From index.html and shared across all pages
    ========================================================================== */
 
@@ -29,7 +29,7 @@ body {
 }
 
 /* ==========================================================================
-   Skupni elementi 
+   Shared elements
    Used across multiple pages
    ========================================================================== */
 
@@ -189,12 +189,12 @@ button:hover {
     border-radius: 8px;
     box-shadow: var(--card-shadow);
     margin-bottom: 1.5em;
-    border-left: 4px solid #ffc107; /* Rumena označba za "na pavzi" */
+    border-left: 4px solid #ffc107; /* Yellow indicator for "paused" */
 }
 
 .paused-episodes-container h2 {
     margin-bottom: 1em;
-    color: #e67e22; /* Oranžna barva za naslov "Epizode na pavzi" */
+    color: #e67e22; /* Orange color for "Paused Episodes" title */
     font-size: 1.1em;
 }
 
@@ -293,14 +293,14 @@ button:hover {
     margin-top: auto;
 }
 
-/* Gumb za skrivanje podcastov */
+/* Button for hiding podcasts */
 .hide-btn {
     background-color: transparent;
-    color: #dc3545; /* Sprememba barve v rdečo */
+    color: #dc3545; 
     border: none;
-    padding: 0.2em; /* Manjši padding za boljšo poravnavo */
+    padding: 0.2em; 
     margin: 0;
-    font-size: 0.8em; /* Manjša velikost, da se ujema z oznako Javno */
+    font-size: 0.8em; 
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -308,10 +308,10 @@ button:hover {
 }
 
 .hide-btn:hover {
-    color: #c82333; /* Temnejša rdeča ob prehozu miške */
+    color: #c82333; 
 }
 
-/* Gumb za ponovno prikazovanje */
+/* Button for showing again */
 .show-btn {
     background-color: var(--primary-color);
     color: white;
@@ -330,7 +330,7 @@ button:hover {
 
 
 /* ==========================================================================
-   Sekcija zadnjih epizod
+   Latest episodes section
    For the sidebar in index.html
    ========================================================================== */
 
@@ -441,7 +441,7 @@ button:hover {
 }
 
 /* ==========================================================================
-   Stili strani s podcastom (podcast.html)
+   Podcast page styles (podcast.html)
    ========================================================================== */
 
    .header {
@@ -514,7 +514,7 @@ button:hover {
     border-bottom: 1px solid #ddd;
 }
 
-/* Nov episode-header za boljšo organizacijo naslovne vrstice */
+/* header for better organization of title row */
 .episode-header {
     display: flex;
     justify-content: space-between;
@@ -524,7 +524,7 @@ button:hover {
     gap: 0.5em;
 }
 
-/* Stil za prikaz pozicije predvajanja */
+/* Style for displaying playback position */
 .playback-position {
     font-size: 0.9em;
     color: #666;
@@ -536,16 +536,16 @@ button:hover {
     gap: 0.3em;
 }
 
-/* Posebni stili za gumbe z različnimi stanji */
+/* Special styles for buttons with different states */
 .play-button[data-position]:not([data-position="0"]) {
-    background-color: #28a745;  /* Zelena barva za nadaljevanje */
+    background-color: #28a745;  
 }
 
 .play-button[data-position]:not([data-position="0"]):hover {
-    background-color: #218838;  /* Temnejša zelena ob hover */
+    background-color: #218838;  
 }
 
-/* Responsive prilagoditve */
+/* Responsive adjustments */
 @media (max-width: 768px) {
     .episode-header {
         flex-direction: column;
@@ -558,12 +558,12 @@ button:hover {
     }
 }
 
-/* Animacija za gumb predvajanja */
+/* Animation for play button */
 .play-button {
     transition: background-color 0.3s ease;
 }
 
-/* Izboljšan prikaz ikon statusa */
+/* Improved status icons display */
 .episode-header strong {
     display: flex;
     align-items: center;
@@ -571,14 +571,14 @@ button:hover {
     flex-wrap: wrap;
 }
 
-/* Status ikone */
+/* Status icons */
 .status-icons {
     display: inline-flex;
     gap: 0.3em;
     align-items: center;
 }
 
-/* Prilagoditev za mobile view */
+/* Adjustment for mobile view */
 @media (max-width: 480px) {
     .episode-controls {
         flex-direction: column;
@@ -624,7 +624,7 @@ audio {
     background-color: #f0f0f0;
     color: #333;
     border: 1px solid #ccc;
-    white-space: nowrap; /* Prepreči prelom besedila */
+    white-space: nowrap; 
 }
 
 .play-button:hover {
@@ -728,10 +728,10 @@ audio {
 
 .podcast-status-row {
     display: flex;
-    justify-content: flex-start; /* Sprememba iz space-between na flex-start */
+    justify-content: flex-start; 
     align-items: center;
     margin: 0.5em 0;
-    gap: 8px; /* Dodamo manjšo konstanto razdaljo med elementi */
+    gap: 8px; 
 }
 
 .player-select-container {
@@ -739,7 +739,7 @@ audio {
     align-items: center;
     gap: 0.5em;
     flex: 1;
-    min-width: 0; /* Prepreči preširoko raztegovanje */
+    min-width: 0; 
 }
 
 .playback-position {
@@ -748,7 +748,7 @@ audio {
     white-space: nowrap;
 }
 
-/* Responsivne prilagoditve za player-select-container */
+/* Responsive adjustments for player-select-container */
 @media (max-width: 480px) {
     .episode-controls {
         flex-direction: column;
@@ -767,7 +767,7 @@ audio {
     }
 }
 
-/* Posodobimo tudi stil za gumb */
+/* Update button style as well */
 .hide-btn {
     background-color: transparent;
     color: #777;
@@ -784,28 +784,28 @@ audio {
     color: #333;
 }
 
-/* Medijske poizvedbe za dodatno prilagoditev na manjših zaslonih */
+/* Media queries for additional adjustment on smaller screens */
 @media (max-width: 768px) {
     .pagination {
         gap: 0.3em;
     }
     
     .pagination button {
-        min-width: 60px; /* Manjša minimalna širina na manjših zaslonih */
+        min-width: 60px; 
         font-size: 0.85em;
     }
 }
 
-/* Za najmanjše zaslone (mobilni telefoni) */
+/* For smallest screens (mobile phones) */
 @media (max-width: 480px) {
     .pagination button {
         padding: 0.6em 0.4em;
         margin: 0.2em 0.1em;
-        min-width: auto; /* Odstranimo minimalno širino */
+        min-width: auto; 
     }
     
     .page-input-container {
-        flex: 1; /* Raztegne se čez preostali prostor */
+        flex: 1; 
     }
     
     .page-input-container input {
@@ -820,7 +820,7 @@ audio {
 }
 
 /* ==========================================================================
-   Stili strani z nastavitvami (settings.html)
+   Settings page styles (settings.html)
    ========================================================================== */
 
 .back-button {
@@ -961,7 +961,7 @@ audio {
 }
 
 /* ==========================================================================
-   Stili za modalno okno (prikaz vseh epizod)
+   Modal window styles (show all episodes)
    ========================================================================== */
 
    .modal-overlay {
@@ -1064,7 +1064,7 @@ audio {
     justify-content: flex-end;
 }
 
-/* Stili za opis podcasta */
+/* Podcast description styles */
 .podcast-description {
     margin-top: 10px;
     color: #555;
@@ -1078,7 +1078,7 @@ audio {
     font-style: italic;
 }
 
-/* Na večjih zaslonih vedno prikaži celoten opis in skrij preview in gumb */
+/* On larger screens always show full description and hide preview and button */
 @media (min-width: 768px) {
     .podcast-description .description-preview {
         display: none !important;
@@ -1093,7 +1093,7 @@ audio {
     }
 }
 
-/* Na manjših zaslonih v pokončnem položaju prikaži preview in gumb */
+/* On smaller screens in portrait orientation show preview and button */
 @media (max-width: 767px) and (orientation: portrait) {
     .podcast-description .description-preview {
         display: block;
@@ -1103,11 +1103,11 @@ audio {
         display: none;
     }
     
-    /* .show-more se prikaže ali skrije na podlagi JavaScript logike, 
-       glede na to, ali je opis daljši od 50 znakov */
+    /* .show-more is shown or hidden based on JavaScript logic, 
+      depending on whether description is longer than 50 characters */
 }
 
-/* Stili za opis epizode */
+/* Episode description styles */
 .episode-description {
     margin: 8px 0;
     color: #555;
@@ -1129,7 +1129,7 @@ audio {
     text-decoration: underline;
 }
 
-/* Stili za prikaz predvajalnikov v nastavitvah */
+/* Styles for displaying players in settings */
 .settings-description {
     margin-bottom: 1em;
     color: #666;
@@ -1192,17 +1192,17 @@ audio {
     background-color: #e0e0e0;
 }
 
-/* Ločilna črta med sekcijami v nastavitvah */
+/* Separator line between sections in settings */
 .settings-divider {
     border-top: 1px solid #eee;
     margin: 2em 0;
 }
 
 /* ==========================================================================
-   Stili za tablet.html (centralni uporabnik)
+   Styles for tablet.html (central user)
    ========================================================================== */
 
-/* Header modificiran za centralni dostop */
+/* Header modified for central access */
 .header-right {
     display: flex;
     align-items: center;
@@ -1220,8 +1220,8 @@ audio {
     font-size: 1em;
 }
 
-/* Tab users nastavitve */
-/* Dodamo nove stile za dropdown izbirnik */
+/* Tab user settings */
+/* Add new styles for dropdown selector */
 .user-selector {
     display: flex;
     align-items: center;
@@ -1251,14 +1251,14 @@ audio {
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
 }
 
-/* Prilagoditev header stila */
+/* Header style adjustment */
 .header-right {
     display: flex;
     align-items: center;
     gap: 1em;
 }
 
-/* Optimizacija za tablični prikaz */
+/* Optimization for tablet display */
 @media (max-width: 768px) {
     .user-selector {
         flex-direction: column;
@@ -1275,20 +1275,20 @@ audio {
     }
 }
 
-/* Prilagoditev container stila za boljši izgled na tablici */
+/* Container style adjustment for better tablet appearance */
 .container {
     padding: 1em;
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* Prilagoditev podcast sekcije */
+/* Podcast section adjustment */
 .podcast-section {
     margin-top: 1em;
     width: 100%;
 }
 
-/* Izboljšan prikaz stanja nalaganja */
+/* Improved loading state display */
 .loading {
     text-align: center;
     padding: 2em;
@@ -1298,7 +1298,7 @@ audio {
     margin: 1em 0;
 }
 
-/* Izboljšan prikaz praznega stanja */
+/* Improved empty state display */
 .empty-state {
     text-align: center;
     padding: 3em;
@@ -1324,7 +1324,7 @@ audio {
     width: 100%;
 }
 
-/* Sekcija s podcasti */
+/* Podcast section */
 .podcast-section {
     width: 100%;
     margin-top: 2em;
@@ -1340,7 +1340,7 @@ audio {
     font-weight: bold;
 }
 
-/* Dopolnitev za nastavitve */
+/* Settings supplement */
 .users-table {
     width: 100%;
     border-collapse: collapse;
@@ -1374,7 +1374,7 @@ audio {
     margin-top: 1.5em;
 }
 
-/* Stili za prikaz podcastov v tablet.html */
+/* Styles for displaying podcasts in tablet.html */
 .latest-episodes-container {
     background: white;
     padding: 1.5em;
@@ -1392,9 +1392,9 @@ audio {
     }
 }
 
-/* Dodatni CSS stili za podporo javnim/zasebnim podcastom */
+/* Additional CSS styles to support public/private podcasts */
 
-/* Stili za checkbox v obrazcu za dodajanje podcasta */
+/* Checkbox styles in the podcast add form */
 .form-checkbox {
     display: flex;
     align-items: center;
@@ -1412,7 +1412,7 @@ audio {
     color: #666;
 }
 
-/* Oznaka za javne podcaste */
+/* Public podcast tag */
 .public-badge {
     display: inline-block;
     background-color: #28a745;
@@ -1420,17 +1420,17 @@ audio {
     padding: 0.2em 0.5em;
     border-radius: 3px;
     font-size: 0.8em;
-    margin: 0; /* Odstranimo margin, ker uporabljamo gap v nadrejenem elementu */
+    margin: 0; 
 }
 
-/* Prikaz avtorja podcasta */
+/* Show podcast author */
 .podcast-owner {
     color: #666;
     font-size: 0.85em;
     margin: 0.3em 0 0.5em;
 }
 
-/* Nastavi admin v nastavitvah */
+/* Set admin in settings */
 .admin-checkbox {
     width: 18px;
     height: 18px;
@@ -1442,7 +1442,7 @@ audio {
     accent-color: var(--primary-color);
 }
 
-/* Izboljšamo izgled celice s checkboxom */
+/* Improve the appearance of a cell with a checkbox */
 .users-table td:nth-child(3) {
     text-align: center;
 }
@@ -1466,7 +1466,7 @@ audio {
 }
 
 /* ==========================================================================
-   Stili za tablet layout (tablet.html) - dodatni layout
+   Styles for tablet layout (tablet.html) - additional layout
    ========================================================================== */
 
 .tablet-layout {
@@ -1488,10 +1488,10 @@ audio {
 
 .main-content {
     flex: 1;
-    min-width: 0; /* Prepreči preširoko raztegovanje */
+    min-width: 0; 
 }
 
-/* Prilagoditve za levi sidebar */
+/* Left sidebar customizations */
 .left-sidebar .paused-episodes-container,
 .left-sidebar .latest-episodes-container {
     background: white;
@@ -1508,7 +1508,7 @@ audio {
     border-left: 4px solid var(--primary-color);
 }
 
-/* Manjši episodes-scrollable za sidebar */
+/* Smaller episodes-scrollable for sidebar */
 .left-sidebar .episodes-scrollable {
     max-height: 300px;
     overflow-y: auto;
@@ -1531,7 +1531,7 @@ audio {
     border-radius: 3px;
 }
 
-/* Posebni stili za epizode v sidebar-u */
+/* Special styles for episodes in the sidebar */
 .left-sidebar .episode-item {
     padding: 10px;
     margin-bottom: 8px;
@@ -1562,7 +1562,7 @@ audio {
     font-size: 0.8em;
 }
 
-/* Responsive prilagoditve za tablet */
+/* Responsive adaptations for tablets */
 @media (max-width: 1200px) {
     .left-sidebar {
         flex: 0 0 300px;
@@ -1617,7 +1617,7 @@ audio {
     }
 }
 
-/* Prilagoditev glavnega vsebinskega dela */
+/* Adaptation of the main content part */
 .main-content .podcast-section {
     width: 100%;
 }
@@ -1628,7 +1628,7 @@ audio {
     text-align: center;
 }
 
-/* Izboljšan prikaz podcastov v glavnem delu */
+/* Improved display of podcasts in the main section */
 .main-content .podcasts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1648,7 +1648,7 @@ audio {
     }
 }
 
-/* Prilagoditev za boljšo vizualnost na tablicah */
+/* Adjustment for better visuals on tablets */
 .main-content .loading,
 .main-content .empty-state {
     text-align: center;
@@ -1659,7 +1659,7 @@ audio {
     box-shadow: var(--card-shadow);
 }
 
-/* Animacije za boljšo uporabniško izkušnjo */
+/* Animations for a better user experience */
 .left-sidebar .paused-episodes-container,
 .left-sidebar .latest-episodes-container {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -1679,7 +1679,7 @@ audio {
     background-color: #f8f9fa;
 }
 
-/* Posebni stili za prazno stanje v sidebar-u */
+/* Special styles for empty state in sidebar */
 .left-sidebar .empty-state {
     text-align: center;
     padding: 2em 1em;

@@ -1,13 +1,13 @@
-# Osnovna slika za Home Assistant dodatke
+# Base image for Home Assistant add-ons
 ARG BUILD_FROM=ghcr.io/hassio-addons/base:14.0.1
 FROM ${BUILD_FROM}
 
-LABEL maintainer="tvoj-email@domena.com"
+LABEL maintainer="smartgeeky@hotmail.com"
 
-# Nastavi delovni imenik
+# Set working directory
 WORKDIR /app
 
-# Namestitev potrebnih orodij in knjižnic
+# Install required tools and libraries
 RUN apk add --no-cache python3 py3-pip sqlite bash && \
     python3 -m venv /app/venv && \
     /app/venv/bin/pip install --no-cache-dir \
@@ -19,15 +19,15 @@ RUN apk add --no-cache python3 py3-pip sqlite bash && \
         websockets \
         gunicorn
 
-# Kopiraj skripte in konfiguracije
+# Copy scripts and configurations
 COPY run.sh /run.sh
 COPY main.py /app/main.py
 COPY static /app/static
 
-# Nastavi dovoljenja za zagonsko skripto
+# Set permissions for startup script
 RUN chmod +x /run.sh
 
-# Nastavi medijsko mapo kot volumen
+# Set media folder as volume
 VOLUME /media
 
 ENTRYPOINT [ "/run.sh" ]

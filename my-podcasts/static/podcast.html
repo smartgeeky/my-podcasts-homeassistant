@@ -35,7 +35,7 @@
         </div>
 
         
-    <!-- Funkcionalnosti za nalaganje XML datoteke -->
+    <!-- XML file upload functionality -->
     <h2 data-i18n="podcast.manual_rss_upload">Manual RSS Upload</h2>
     <input type="file" id="rssXmlInput" accept=".xml" data-i18n-placeholder="podcast.select_xml_file" placeholder="Select XML file with RSS data">
     <button id="addMissingBtn" onclick="addMissingEpisodes()" data-i18n="podcast.add_missing_episodes">Add missing episodes from RSS XML</button>
@@ -69,7 +69,7 @@
         const pageSize = 5;
         let totalEpisodes = 0;
 
-        // Globalne spremenljivke za sledenje predvajanju
+        // Global variables for playback tracking
         let currentPlayingEpisodeId = null;
         let positionUpdateInterval = null;
 
@@ -82,7 +82,7 @@
         
     });
 
-        // Dodamo novo funkcijo za vrnitev na seznam izbranega uporabnika
+        // We are adding a new function to return to the selected user's list
         function backToUserView() {
             const params = new URLSearchParams(window.location.search);
             const userId = params.get('as_user');
@@ -91,23 +91,23 @@
             }
         }
 
-        // Funkcija za pridobitev skrajšanega besedila
+        // Function to get abbreviated text
         function getPreviewText(text) {
             if (!text) return '';
-            const maxLength = 50; // Spremenjeno na 50 znakov
+            const maxLength = 50; 
              if (text.length <= maxLength) return text;
     
-             // Poskusi najti konec besede blizu maxLength
+             // Try to find the end of the word near maxLength
             const endOfWord = text.lastIndexOf(' ', maxLength);
             if (endOfWord > 0) {
                  return text.substring(0, endOfWord) + '...';
             }
     
-            // Če ni presledka, vrni prvih maxLength znakov
+            // If there is no space, return the first maxLength characters
             return text.substring(0, maxLength) + '...';
     }
     
-        // Funkcija za preklapljanje med skrajšanim in celotnim opisom
+        // Function to switch between short and full description
         function toggleDescription(element) {
             const descriptionDiv = element.parentElement;
             const preview = descriptionDiv.querySelector('.description-preview');
@@ -247,7 +247,7 @@
             return null;
         }
     
-        // Ostale funkcije kot prej
+        // Other functions as before
         async function loadPodcastInfo() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -274,11 +274,11 @@
                     document.getElementById('podcastTitleInfo').textContent = podcast.naslov;
                     document.getElementById('podcastImage').src = podcast.image_url || 'https://via.placeholder.com/150';
                     
-                    // Nastavi vidnost v dropdown meniju
+                    // Set visibility in dropdown menu
                     const visibilitySelect = document.getElementById('visibilitySelect');
                     visibilitySelect.value = podcast.is_public ? '1' : '0';
 
-                    // Dodaj opis podcasta
+                    // Add a podcast description
 const descriptionElement = document.getElementById('podcastDescription');
 if (descriptionElement) {
     const previewEl = descriptionElement.querySelector('.description-preview');
@@ -286,13 +286,13 @@ if (descriptionElement) {
     const showMoreBtn = descriptionElement.querySelector('.show-more');
     
     if (podcast.description) {
-        // Nastavi celoten opis
+        // Set full description
         fullEl.textContent = podcast.description;
         
-        // Nastavi skrajšan opis za mobilne naprave
+        // Set a short description for mobile devices
         previewEl.textContent = getPreviewText(podcast.description);
         
-        // Prikaži "Več..." gumb samo če je opis daljši od maxLength
+        // Show "More..." button only if description is longer than maxLength
         if (podcast.description.length > 50) {
             showMoreBtn.style.display = 'inline';
         } else {
@@ -314,19 +314,19 @@ if (descriptionElement) {
         async function loadEpisodes(podcastId, asUserId) {
             const episodesDiv = document.getElementById('episodes');
             try {
-                // Če podcastId ni podan, poskusi ga dobiti iz URL
+                // If podcastId is not given, try to get it from the URL
                 if (!podcastId) {
                     const urlParams = new URLSearchParams(window.location.search);
                     podcastId = urlParams.get('id');
                 }
 
-                // Če asUserId ni podan, poskusi ga dobiti iz URL
+                // If asUserId is not given, try to get it from the URL
                 if (!asUserId) {
                     const urlParams = new URLSearchParams(window.location.search);
                     asUserId = urlParams.get('as_user');
                 }
 
-                // Sestavi URL za API klic z upoštevanjem as_user parametra
+                // Constructs the URL for the API call, taking into account the as_user parameter
                 let apiUrl = `${ingressBase}/api/episodes/${podcastId}`;
                 if (asUserId) {
                     apiUrl += `?as_user=${asUserId}`;
@@ -338,15 +338,15 @@ if (descriptionElement) {
                 const episodes = await response.json();
                 totalEpisodes = episodes.length;
 
-                // Če imamo target epizodo, poiščimo na kateri strani se nahaja
+                // If we have a target episode, let's find which page it is located on
                 if (targetEpisodeId) {
                     const targetIndex = episodes.findIndex(ep => ep.id == targetEpisodeId);
                     if (targetIndex !== -1) {
-                        // Izračunaj na kateri strani se nahaja epizoda
+                        // Calculate which page the episode is on
                         const targetPage = Math.floor(targetIndex / pageSize) + 1;
                         if (targetPage !== currentPage) {
                             currentPage = targetPage;
-                            // Ponovno naloži s pravo stranjo (rekurzivni klic)
+                            // Reload with the right page (recursive call)
                             await loadEpisodes(podcastId, asUserId);
                             return;
                         }
@@ -361,11 +361,11 @@ if (descriptionElement) {
                      // Escape special characters in title
                     const safeTitle = episode.naslov.replace(/['"\\]/g, char => '\\' + char);
             
-                    // Določi stanje poslušanosti za prikaz ikone in besedila
+                    // Determines the listening status for displaying the icon and text
                     const isListened = episode.poslušano === 1;
                     const hasPlaybackPosition = episode.playback_position > 0;
     
-                    // Določi besedilo gumba glede na stanje predvajanja
+                    // Determines button text based on playback state
                     let playButtonText = '▶️ ' + window.i18n.t('episodes.play_browser');
                     if (isListened) {
                         playButtonText = '🔄 ' + window.i18n.t('episodes.play_again');
@@ -373,7 +373,7 @@ if (descriptionElement) {
                         playButtonText = `▶️ ${window.i18n.t('episodes.continue_from')} (${episode.playback_time_formatted})`;
                     }
     
-                    // Ikone za status
+                    // Status icons
                     const statusIcons = [];
                     if (isListened) statusIcons.push('✅');
                     if (hasPlaybackPosition) statusIcons.push('⏸️');
@@ -422,7 +422,7 @@ if (descriptionElement) {
                 // Load media players after episodes are rendered
                 await loadMediaPlayers();
 
-                // Če imamo target epizodo, poiščimo jo in scroll-aj nanjo
+                // If we have a target episode, let's find it and scroll to it
                 if (targetEpisodeId) {
                     scrollToTargetEpisode(parseInt(targetEpisodeId));
                 }
@@ -457,7 +457,7 @@ if (descriptionElement) {
             select.disabled = true;
             
             if (players.length === 0) {
-                // Če ni izbranih predvajalnikov
+                // If no players are selected
                 select.innerHTML = `
                     <option value=""> 🔊 ${window.i18n.t('forms.no_players')}</option>
                 `;
@@ -490,23 +490,23 @@ if (descriptionElement) {
     }
 }
 
-        // Funkcija za iskanje in scroll na ciljno epizodo
+        // Search and scroll function to target episode
         function scrollToTargetEpisode(episodeId) {
-            // Poiščimo epizodo v trenutno naloženih epizodah
+            // Let's find the episode in the currently loaded episodes
             const episodeElements = document.querySelectorAll('.episode');
             episodeElements.forEach(element => {
-                // Poiščimo gumb za predvajanje, ki vsebuje točno ta episode ID
+                // Let's find the play button that contains this exact episode ID
                 const playButton = element.querySelector(`[onclick*="playEpisode"][onclick*="${episodeId}"]`);
                 if (playButton) {
-                    // Preverimo, ali se ID točno ujema (ne samo delno)
+                    // We check if the ID is an exact match (not just a partial one)
                     const onclickAttr = playButton.getAttribute('onclick');
-                    // Regex za preverjanje, ali je ID obkrožen z vejicami ali oklepaji
+                    // Regex to check if an ID is surrounded by commas or parentheses
                     const regex = new RegExp(`[,\\(]\\s*${episodeId}\\s*[,\\)]`);
                     if (regex.test(onclickAttr)) {
-                        // Označimo epizodo
+                        // Let's mark the episode
                         element.style.backgroundColor = '#fff3cd';
                         element.style.border = '2px solid #ffc107';
-                        // Scroll na epizodo
+                        // Scroll to episode
                         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         return;
                     }
@@ -514,7 +514,7 @@ if (descriptionElement) {
             });
         }
 
-        // Funkcija za shranjevanje pozicije
+        // Position saving function
 async function savePlaybackPosition(episodeId, position) {
     try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -544,11 +544,11 @@ async function savePlaybackPosition(episodeId, position) {
     }
 }
 
-// Posodobljena funkcija za predvajanje
+// Updated playback feature
 async function playEpisode(url, episodeId, startPosition = 0) {
     const audioPlayer = document.getElementById('audioPlayer');
     
-    // Če je isto kot trenutno predvajamo, samo preklopimo play/pause
+    // If it's the same as what's currently playing, just toggle play/pause
     if (currentPlayingEpisodeId === episodeId && audioPlayer.src === url) {
         if (audioPlayer.paused) {
             audioPlayer.play();
@@ -558,20 +558,20 @@ async function playEpisode(url, episodeId, startPosition = 0) {
         return;
     }
 
-    // Počistimo interval za prejšnjo epizodo
+    // Let's clear the interval for the previous episode
     if (positionUpdateInterval) {
         clearInterval(positionUpdateInterval);
     }
 
     try {
-        // Nastavimo novo epizodo
+        // Let's set up a new episode.
         currentPlayingEpisodeId = episodeId;
         audioPlayer.src = url;
 
-        // Čakamo, da se metadata naloži
+        // Waiting for metadata to load
         await new Promise((resolve) => {
             audioPlayer.onloadedmetadata = () => {
-                // Nastavimo začetno pozicijo po tem, ko se audio naloži
+                // Set the starting position after the audio loads
                 if (startPosition > 0) {
                     audioPlayer.currentTime = startPosition;
                 }
@@ -579,37 +579,37 @@ async function playEpisode(url, episodeId, startPosition = 0) {
             };
         });
 
-        // Začnemo s predvajanjem
+        // Let's start playing
         await audioPlayer.play();
         
-        // Nastavimo interval za shranjevanje pozicije
+        // Set the interval for saving the position
         positionUpdateInterval = setInterval(() => {
             if (!audioPlayer.paused) {
                 savePlaybackPosition(episodeId, audioPlayer.currentTime);
             }
-        }, 10000); // Shranimo vsakih 10 sekund
+        }, 10000); // We save every 10 seconds
         
-        // Event listener za pavzo/stop
+        // Event listener for pause/stop
         audioPlayer.onpause = () => {
             if (currentPlayingEpisodeId === episodeId) {
                 savePlaybackPosition(episodeId, audioPlayer.currentTime);
             }
         };
         
-        // Event listener za konec predvajanja
+        // Event listener for end of playback
         audioPlayer.onended = async () => {
             if (currentPlayingEpisodeId === episodeId) {
                 clearInterval(positionUpdateInterval);
                 currentPlayingEpisodeId = null;
-                // Označimo kot poslušano
+                // Mark as listened
                 await markEpisodeAsListened(episodeId);
-                // Ponastavimo pozicijo na 0
+                // Reset the position to 0
                 await savePlaybackPosition(episodeId, 0);
                 await loadEpisodes();
             }
         };
 
-        // Označimo kot poslušano
+        // Mark as listened
         await markEpisodeAsListened(episodeId);
         
     } catch (error) {
@@ -617,7 +617,7 @@ async function playEpisode(url, episodeId, startPosition = 0) {
     }
 }
 
-// Funkcija za označevanje epizode kot poslušane (izločena iz playEpisode)
+// Feature to mark an episode as listened to (excluded from playEpisode)
 async function markEpisodeAsListened(episodeId) {
     try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -646,12 +646,12 @@ async function markEpisodeAsListened(episodeId) {
     }
 }
 
-// Nova funkcija za predvajanje na napravi z upoštevanjem shranjene pozicije
+// Function for playback on the device while respecting the saved position
 async function playOnDeviceWithPosition(episodeUrl, episodeTitle, playerEntityId, episodeId) {
     if (!playerEntityId) return;
 
     try {
-        // Najprej pridobimo shranjeno pozicijo predvajanja
+        // First, we retrieve the saved playback position
         const urlParams = new URLSearchParams(window.location.search);
         const asUserId = urlParams.get('as_user');
         
@@ -668,7 +668,7 @@ async function playOnDeviceWithPosition(episodeUrl, episodeTitle, playerEntityId
             startPosition = positionData.position || 0;
         }
 
-        // Predvajaj na napravi z začetno pozicijo
+        // Play on device with starting position
         const response = await fetch(`${ingressBase}/api/play_episode`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -682,10 +682,10 @@ async function playOnDeviceWithPosition(episodeUrl, episodeTitle, playerEntityId
 
         if (!response.ok) throw new Error('Error playing episode');
 
-        // Označimo kot poslušano
+        // Mark as listened
         await markEpisodeAsListened(episodeId);
         
-        // Ponastavimo pozicijo na 0 (predpostavimo dokončano poslušanje)
+        // Reset the position to 0 (assuming listening is complete)
         await savePlaybackPosition(episodeId, 0);
         
         const result = await response.json();
@@ -701,7 +701,7 @@ async function playOnDeviceWithPosition(episodeUrl, episodeTitle, playerEntityId
         }
         }   
 
-// Funkcija za predvajanje na napravi
+// Play function on device
 async function playOnDevice(episodeUrl, episodeTitle, playerEntityId, episodeId, startPosition = 0) {
     if (!playerEntityId) return;
 
@@ -716,13 +716,13 @@ async function playOnDevice(episodeUrl, episodeTitle, playerEntityId, episodeId,
                 player_entity_id: playerEntityId,
                 episode_url: episodeUrl,
                 episode_title: episodeTitle,
-                start_position: startPosition // Dodamo začetno pozicijo
+                start_position: startPosition 
             })
         });
 
         if (!response.ok) throw new Error('Error playing episode');
 
-        // Označimo kot poslušano in začnemo slediti poziciji
+        // Mark as listened and start tracking the position
         await markEpisodeAsListened(episodeId);
         
         const result = await response.json();
@@ -732,7 +732,7 @@ async function playOnDevice(episodeUrl, episodeTitle, playerEntityId, episodeId,
     }
 }
 
-// Cleanup funkcija ob zapiranju strani
+// Cleanup function when closing the page
 window.addEventListener('beforeunload', () => {
     if (currentPlayingEpisodeId && !audioPlayer.paused) {
         savePlaybackPosition(currentPlayingEpisodeId, audioPlayer.currentTime);
@@ -783,12 +783,12 @@ window.addEventListener('beforeunload', () => {
             if (!playerEntityId) return;
 
             try {
-                // Pridobimo URL parametre na začetku
+                // Let's get the URL parameters at the beginning
                 const urlParams = new URLSearchParams(window.location.search);
                 const asUserId = urlParams.get('as_user');
                 const podcastId = urlParams.get('id');
 
-                // Predvajaj na napravi
+                // Play on device
                 const response = await fetch(`${ingressBase}/api/play_episode`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -801,13 +801,13 @@ window.addEventListener('beforeunload', () => {
 
                 if (!response.ok) throw new Error('Error playing episode');
 
-                // Pripravimo podatke za označevanje poslušanosti
+                // Let's prepare data for marking listening
                 const requestData = {};
                 if (asUserId) {
                     requestData.as_user_id = parseInt(asUserId);
                 }
 
-                // Označi kot poslušano
+                // Mark as listened
                 const listenResponse = await fetch(`${ingressBase}/api/episodes/mark_listened/${episodeId}`, {
                     method: 'POST',
                     headers: {
@@ -819,7 +819,7 @@ window.addEventListener('beforeunload', () => {
                 if (!listenResponse.ok) {
                     console.error('Failed to mark episode as listened:', await listenResponse.text());
                 } else {
-                    // Ponovno naloži epizode s pravilnim kontekstom uporabnika
+                    // Reload episodes with correct user context
                     if (podcastId) {
                         await loadEpisodes(podcastId, asUserId);
                     }

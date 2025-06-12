@@ -22,30 +22,30 @@
     </header>
 
     <div class="container tablet-layout">
-        <!-- Levi panel z epizodami -->
+        <!-- Left panel with episodes -->
         <div class="left-sidebar">
-            <!-- Epizode na pavzi izbranega uporabnika -->
+            <!-- Paused episodes of selected user -->
             <div class="paused-episodes-container" id="pausedEpisodesContainer" style="display: none;">
                 <h2 data-i18n="episodes.paused_episodes">Paused Episodes ⏸️</h2>
                 <div class="episodes-scrollable">
                     <div id="pausedEpisodesList">
-                        <!-- Epizode na pavzi bodo naložene tukaj -->
+                        <!-- Paused episodes will be loaded here -->
                     </div>
                 </div>
             </div>
 
-            <!-- Zadnje dodane epizode izbranega uporabnika -->
+            <!-- Latest added episodes of selected user -->
             <div class="latest-episodes-container" id="latestEpisodesContainer">
                 <h2 data-i18n="episodes.latest_episodes">Latest Episodes</h2>
                 <div class="episodes-scrollable">
                     <div id="latestEpisodesList">
-                        <!-- Zadnje epizode bodo naložene tukaj -->
+                        <!-- Latest episodes will be loaded here -->
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Glavni panel s podcasti -->
+        <!-- Main panel with podcasts -->
         <div class="main-content">
             <div class="podcast-section" id="podcastSection">
                 <div id="loadingPodcasts" class="loading">
@@ -53,7 +53,7 @@
                 </div>
                 
                 <div id="podcastList" class="podcasts-grid">
-                    <!-- Podcasti bodo naloženi tukaj -->
+                    <!-- Podcasts will be loaded here -->
                 </div>
             </div>
         </div>
@@ -63,24 +63,24 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        // Globalne spremenljivke
+        // Global variables
         const ingressBase = window.location.pathname.split('/').slice(0, -1).join('/');
         let selectedUserId = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Aplikacija prevodov ob nalaganju strani
+            // Apply translations on page load
             if (window.i18n) {
                 window.i18n.applyTranslations();
             }
     
-            // Napolni izbirnik uporabnikov
+            // Populate users dropdown
             loadUsers();
     
-            // Dodaj poslušalca za spremembo uporabnika
+            // Add listener for user change
             document.getElementById('userSelect').addEventListener('change', (event) => {
                 const userId = event.target.value;
                 if (userId) {
-                    // Shranimo izbranega uporabnika v localStorage
+                    // Save selected user in localStorage
                     localStorage.setItem('selectedUserId', userId);
                     selectUser(userId);
                 } else {
@@ -89,10 +89,10 @@
                 }
             });
 
-    // Preverimo če imamo shranjenega uporabnika
+    // Check if we have saved user
     const savedUserId = localStorage.getItem('selectedUserId');
     if (savedUserId) {
-        // Počakamo da se naložijo uporabniki in nato nastavimo izbiro
+        // Wait for users to load then set selection
         loadUsers().then(() => {
             const userSelect = document.getElementById('userSelect');
             userSelect.value = savedUserId;
@@ -101,7 +101,7 @@
     }
 });
 
-        // Funkcija za prikaz obvestila (toast)
+        // Function for displaying notification (toast)
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -113,10 +113,10 @@
             }, 3000);
         }
 
-        // Funkcija za nalaganje uporabnikov v izbirnik
+        // Function for loading users into dropdown
         async function loadUsers() {
             try {
-            const response = await fetch(`${ingressBase}/api/users/with_podcasts`);  // Spremenjen URL
+            const response = await fetch(`${ingressBase}/api/users/with_podcasts`);  
             if (!response.ok) {
             throw new Error('Error loading users');
             }
@@ -139,7 +139,7 @@
             }
         }
 
-        // Funkcija za izbiro uporabnika
+        // Function for user selection
         async function selectUser(userId) {
             selectedUserId = userId;
             await loadUserPodcasts(userId);
@@ -147,7 +147,7 @@
             await loadUserPausedEpisodes(userId);
         }
 
-        // Funkcija za čiščenje prikaza
+        // Function for clearing display
         function clearPodcastDisplay() {
             document.getElementById('podcastList').innerHTML = '';
             document.getElementById('latestEpisodesList').innerHTML = '';
@@ -156,7 +156,7 @@
             document.getElementById('pausedEpisodesContainer').style.display = 'none';
         }
 
-        // Funkcija za nalaganje podcastov uporabnika
+        // Function for loading user podcasts
         async function loadUserPodcasts(userId) {
             const podcastList = document.getElementById('podcastList');
             const loadingPodcasts = document.getElementById('loadingPodcasts');
@@ -201,7 +201,7 @@
             }
         }
 
-        // Funkcija za nalaganje zadnjih epizod
+        // Function for loading latest episodes
         async function loadUserLatestEpisodes(userId) {
             const latestEpisodesList = document.getElementById('latestEpisodesList');
             const latestEpisodesContainer = document.getElementById('latestEpisodesContainer');
@@ -260,7 +260,7 @@
             }
         }
 
-        // Funkcija za nalaganje epizod na pavzi
+        // Function for loading paused episodes
         async function loadUserPausedEpisodes(userId) {
             const pausedEpisodesList = document.getElementById('pausedEpisodesList');
             const pausedEpisodesContainer = document.getElementById('pausedEpisodesContainer');
@@ -310,7 +310,7 @@
             }
         }
 
-        // Navigacijske funkcije
+        // Navigation functions
         function goToPodcast(podcastId, userId) {
             window.location.href = `${ingressBase}/podcast.html?id=${podcastId}&as_user=${userId}&source=tablet`;
         }

@@ -20,10 +20,8 @@ My Podcasts is a comprehensive Home Assistant add-on for managing and listening 
 
 ### 🎵 Playback Features
 - **Built-in Browser Player**: Play episodes directly in the web interface
-- **Home Assistant Integration**: Play on any connected media player with smart position resumption
-- **Playback Position Tracking**: Resume episodes from where you left off across all devices
-- **Smart Seek Technology**: Episodes automatically start at saved position without brief playback from beginning
-- **Real-time Session Monitoring**: Active tracking of playback sessions on Home Assistant devices
+- **Home Assistant Integration**: Play on any connected media player
+- **Playback Position Tracking**: Resume episodes from where you left off
 - **Listen Status**: Mark episodes as listened with visual indicators
 
 ### 🎨 User Interface
@@ -37,8 +35,6 @@ My Podcasts is a comprehensive Home Assistant add-on for managing and listening 
 - **Episode Descriptions**: Full episode descriptions with expandable text
 - **Pagination**: Efficient browsing of large episode lists
 - **Search and Filter**: Easy navigation through your podcast library
-- **Active Session Tracking**: Real-time monitoring of playback across Home Assistant devices
-- **Intelligent Position Management**: Seamless position synchronization between browser and HA players
 
 ## 🚀 Installation
 
