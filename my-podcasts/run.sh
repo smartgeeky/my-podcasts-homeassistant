@@ -83,6 +83,20 @@ CREATE TABLE IF NOT EXISTS EpisodePlaybackPosition (
     UNIQUE(episode_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS ActiveTrackingSessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    episode_id INTEGER NOT NULL,
+    player_entity_id TEXT NOT NULL,
+    episode_url TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_position INTEGER DEFAULT -1,
+    same_position_count INTEGER DEFAULT 0,
+    FOREIGN KEY (episode_id) REFERENCES Episodes (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users (id) ON DELETE CASCADE,
+    UNIQUE(episode_id, user_id, player_entity_id)
+);
+
 -- Insert default settings if they don't exist yet
 INSERT OR IGNORE INTO Settings (id, avtomatsko, interval, cas_posodobitve, zadnja_posodobitev)
 VALUES (1, 1, 24, '03:00', datetime('now'));
@@ -90,6 +104,17 @@ EOF
     echo "Database structure created."
 else
     echo "Database already exists, checking for structure updates..."
+
+    # Add position tracking columns if they don't exist
+    HAS_TRACKING_COLUMNS=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM pragma_table_info('ActiveTrackingSessions') WHERE name='last_position';")
+    if [ "$HAS_TRACKING_COLUMNS" -eq "0" ]; then
+        echo "Adding position tracking columns..."
+        sqlite3 "$DB_PATH" <<EOF
+    ALTER TABLE ActiveTrackingSessions ADD COLUMN last_position INTEGER DEFAULT -1;
+    ALTER TABLE ActiveTrackingSessions ADD COLUMN same_position_count INTEGER DEFAULT 0;
+EOF
+    echo "Position tracking columns added."
+fi
     
     # 1. Check if column 'is_public' already exists in Podcasts table
     HAS_IS_PUBLIC=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM pragma_table_info('Podcasts') WHERE name='is_public';")
