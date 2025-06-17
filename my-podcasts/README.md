@@ -203,7 +203,7 @@ safe_mode: false         # Enable safe mode for troubleshooting
 
 ## 📋 Changelog
 
-See [CHANGELOG.md](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/CHANGELOG.md) for detailed version history and update notes.
+See [CHANGELOG.md](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/my-podcasts/CHANGELOG.md) for detailed version history and update notes.
 
 ## 🆘 Troubleshooting
 
