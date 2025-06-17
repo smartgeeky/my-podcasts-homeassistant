@@ -1,6 +1,6 @@
 # My Podcasts - Home Assistant Add-on
 
-[![English](https://img.shields.io/badge/Language-English-blue)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/README.md) [![Slovenian](https://img.shields.io/badge/Language-Slovenian-green)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/my-podcasts/README.sl.md
+[![English](https://img.shields.io/badge/Language-English-blue)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/README.md) [![Slovenian](https://img.shields.io/badge/Language-Slovenian-green)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/my-podcasts/README.sl.md)
 
 My Podcasts is a comprehensive Home Assistant add-on for managing and listening to podcasts within your smart home ecosystem. It provides a complete podcast management solution with multi-user support, automatic updates, and seamless integration with Home Assistant media players.
 
