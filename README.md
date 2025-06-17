@@ -1,6 +1,6 @@
 # My Podcasts - Home Assistant Add-on
 
-[![English](https://img.shields.io/badge/Language-English-blue)](README.md) [![Slovenian](https://img.shields.io/badge/Language-Slovenian-green)](README.sl.md)
+[![English](https://img.shields.io/badge/Language-English-blue)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/README.md) [![Slovenian](https://img.shields.io/badge/Language-Slovenian-green)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/README.sl.md)
 
 My Podcasts is a comprehensive Home Assistant add-on for managing and listening to podcasts within your smart home ecosystem. It provides a complete podcast management solution with multi-user support, automatic updates, and seamless integration with Home Assistant media players.
 
@@ -20,10 +20,8 @@ My Podcasts is a comprehensive Home Assistant add-on for managing and listening 
 
 ### 🎵 Playback Features
 - **Built-in Browser Player**: Play episodes directly in the web interface
-- **Home Assistant Integration**: Play on any connected media player with smart position resumption
-- **Playback Position Tracking**: Resume episodes from where you left off across all devices
-- **Smart Seek Technology**: Episodes automatically start at saved position without brief playback from beginning
-- **Real-time Session Monitoring**: Active tracking of playback sessions on Home Assistant devices
+- **Home Assistant Integration**: Play on any connected media player
+- **Playback Position Tracking**: Resume episodes from where you left off
 - **Listen Status**: Mark episodes as listened with visual indicators
 
 ### 🎨 User Interface
@@ -37,8 +35,6 @@ My Podcasts is a comprehensive Home Assistant add-on for managing and listening 
 - **Episode Descriptions**: Full episode descriptions with expandable text
 - **Pagination**: Efficient browsing of large episode lists
 - **Search and Filter**: Easy navigation through your podcast library
-- **Active Session Tracking**: Real-time monitoring of playback across Home Assistant devices
-- **Intelligent Position Management**: Seamless position synchronization between browser and HA players
 
 ## 🚀 Installation
 
@@ -207,7 +203,7 @@ safe_mode: false         # Enable safe mode for troubleshooting
 
 ## 📋 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for detailed version history and update notes.
+See [CHANGELOG.md](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/CHANGELOG.md) for detailed version history and update notes.
 
 ## 🆘 Troubleshooting
 
@@ -274,7 +270,7 @@ We welcome contributions! Please:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
