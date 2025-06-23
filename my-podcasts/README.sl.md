@@ -40,7 +40,27 @@ My Podcasts je celovit Home Assistant dodatek za upravljanje in poslušanje podc
 - **Sledenje Aktivnih Sej**: Spremljanje predvajanja v realnem času na Home Assistant napravah
 - **Inteligentno Upravljanje Pozicij**: Brezhibna sinhronizacija pozicij med brskalniškimi in HA predvajalniki
 
+## 🔧 Sistemske zahteve
+
+⚠️ **Pomembno**: Ta add-on deluje samo na:
+- **Home Assistant OS** 
+- **Home Assistant Supervised**
+
+❌ **Ni podprto:**
+- Home Assistant Container/Docker Core namestitve
+- Home Assistant Core (Python venv)
+
+**Naprava:**
+- Minimum 512MB RAM
+- 100MB prostora za add-on
+- Dodatni prostor za metadata epizod podcastov
+
 ## 🚀 Namestitev
+
+### Preverjanje kompatibilnosti
+Pred namestitvijo preverite, da imate **Home Assistant OS** in **Supervised**:
+- Pojdite na Settings → System → Repairs
+- Če vidite "Add-on Store", imate pravilno namestitev ✅
 
 ### Metoda 1: Dodajanje Repozitorija (Priporočeno)
 

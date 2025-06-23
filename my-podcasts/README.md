@@ -36,7 +36,27 @@ My Podcasts is a comprehensive Home Assistant add-on for managing and listening 
 - **Pagination**: Efficient browsing of large episode lists
 - **Search and Filter**: Easy navigation through your podcast library
 
+## 🔧 System Requirements
+
+⚠️ **Important**: This add-on only works on:
+- **Home Assistant OS** 
+- **Home Assistant Supervised**
+
+❌ **Not supported:**
+- Home Assistant Container/Docker Core installations
+- Home Assistant Core (Python venv)
+
+**Hardware:**
+- Minimum 512MB RAM
+- 100MB storage space for the add-on
+- Additional space for podcast episode metadata
+
 ## 🚀 Installation
+
+### Compatibility Check
+Before installation, verify you have **Home Assistant OS** and **Supervised**:
+- Go to Settings → System → Repairs
+- If you see "Add-on Store", you have the correct installation ✅
 
 ### Method 1: Add Repository (Recommended)
 
