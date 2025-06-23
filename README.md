@@ -1,6 +1,6 @@
 # My Podcasts - Home Assistant Add-on
 
-[![English](https://img.shields.io/badge/Language-English-blue)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/README.md) [![Slovenian](https://img.shields.io/badge/Language-Slovenian-green)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/README.sl.md)
+[![English](https://img.shields.io/badge/Language-English-blue)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/README.md) [![Slovenian](https://img.shields.io/badge/Language-Slovenian-green)](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/my-podcasts/README.sl.md)
 
 My Podcasts is a comprehensive Home Assistant add-on for managing and listening to podcasts within your smart home ecosystem. It provides a complete podcast management solution with multi-user support, automatic updates, and seamless integration with Home Assistant media players.
 
@@ -36,7 +36,27 @@ My Podcasts is a comprehensive Home Assistant add-on for managing and listening 
 - **Pagination**: Efficient browsing of large episode lists
 - **Search and Filter**: Easy navigation through your podcast library
 
+## 🔧 System Requirements
+
+⚠️ **Important**: This add-on only works on:
+- **Home Assistant OS** 
+- **Home Assistant Supervised**
+
+❌ **Not supported:**
+- Home Assistant Container/Docker Core installations
+- Home Assistant Core (Python venv)
+
+**Hardware:**
+- Minimum 512MB RAM
+- 100MB storage space for the add-on
+- Additional space for podcast episode metadata
+
 ## 🚀 Installation
+
+### Compatibility Check
+Before installation, verify you have **Home Assistant OS** and **Supervised**:
+- Go to Settings → System → Repairs
+- If you see "Add-on Store", you have the correct installation ✅
 
 ### Method 1: Add Repository (Recommended)
 
@@ -203,7 +223,7 @@ safe_mode: false         # Enable safe mode for troubleshooting
 
 ## 📋 Changelog
 
-See [CHANGELOG.md](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/CHANGELOG.md) for detailed version history and update notes.
+See [CHANGELOG.md](https://github.com/smartgeeky/my-podcasts-homeassistant/blob/main/my-podcasts/CHANGELOG.md) for detailed version history and update notes.
 
 ## 🆘 Troubleshooting
 
